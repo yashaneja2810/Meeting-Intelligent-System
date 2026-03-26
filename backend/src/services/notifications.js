@@ -15,21 +15,55 @@ const transporter = nodemailer.createTransport({
 export async function sendNotification(taskId, teamMemberId, type) {
   try {
     // Get task and team member details
-    const { data: task } = await supabaseAdmin
+    const { data: task, error: taskError } = await supabaseAdmin
       .from('tasks')
       .select('*')
       .eq('id', taskId)
       .single();
 
-    const { data: member } = await supabaseAdmin
+    const { data: member, error: memberError } = await supabaseAdmin
       .from('team_members')
       .select('*')
       .eq('id', teamMemberId)
       .single();
 
-    if (!task || !member) {
+    if (taskError || memberError || !task || !member) {
+      console.error('Task or member fetch error:', { taskError, memberError });
       throw new Error('Task or team member not found');
     }
+
+    // Get admin/creator details - try both users and profiles tables
+    let admin = null;
+    
+    // First try profiles table
+    const { data: profileData, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('display_name, email')
+      .eq('id', task.user_id)
+      .single();
+    
+    if (profileData && !profileError) {
+      admin = profileData;
+    } else {
+      // Fallback to users table (auth.users)
+      const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(task.user_id);
+      
+      if (userData && !userError) {
+        admin = {
+          display_name: userData.user?.user_metadata?.display_name || userData.user?.email?.split('@')[0] || 'Admin',
+          email: userData.user?.email || ''
+        };
+      } else {
+        console.error('Admin fetch error:', { profileError, userError });
+        // Use fallback values
+        admin = {
+          display_name: 'Admin',
+          email: process.env.SMTP_USER
+        };
+      }
+    }
+
+    console.log('Admin data fetched:', admin); // Debug log
 
     // Determine notification channel
     const channel = member.slack_webhook ? 'both' : 'email';
@@ -49,7 +83,7 @@ export async function sendNotification(taskId, teamMemberId, type) {
 
     // Send email
     try {
-      await sendEmail(member, task, type);
+      await sendEmail(member, task, type, admin);
     } catch (emailError) {
       console.error('Email send error:', emailError);
     }
@@ -79,16 +113,25 @@ export async function sendNotification(taskId, teamMemberId, type) {
   }
 }
 
-async function sendEmail(member, task, type) {
+async function sendEmail(member, task, type, admin) {
   const subject = getEmailSubject(type, task);
-  const html = getEmailTemplate(member, task, type);
+  const html = getEmailTemplate(member, task, type, admin);
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
+  // Dynamic display name with admin info + Reply-To header
+  const adminName = admin?.display_name || 'Admin';
+  const adminEmail = admin?.email || process.env.SMTP_USER;
+  
+  console.log('Sending email with admin info:', { adminName, adminEmail }); // Debug log
+  
+  const mailOptions = {
+    from: `${adminName} via AutoExec AI <${process.env.SMTP_USER}>`,
+    replyTo: `${adminName} <${adminEmail}>`,
     to: member.email,
     subject,
     html
-  });
+  };
+
+  await transporter.sendMail(mailOptions);
 }
 
 async function sendSlackNotification(webhook, task, type) {
@@ -136,8 +179,12 @@ function getEmailSubject(type, task) {
   }
 }
 
-function getEmailTemplate(member, task, type) {
+function getEmailTemplate(member, task, type, admin) {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const adminName = admin?.display_name || 'Admin';
+  const adminEmail = admin?.email || '';
+  
+  console.log('Email template admin info:', { adminName, adminEmail }); // Debug log
   
   return `
     <!DOCTYPE html>
@@ -149,6 +196,7 @@ function getEmailTemplate(member, task, type) {
         .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; }
         .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
         .task-card { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .admin-info { background: #f3f4f6; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #667eea; }
         .button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
         .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
       </style>
@@ -163,6 +211,10 @@ function getEmailTemplate(member, task, type) {
           <p>Hi ${member.name},</p>
           <p>${getNotificationMessage(type, task)}</p>
           
+          <div class="admin-info">
+            <strong>📧 Assigned by:</strong> ${adminName}${adminEmail ? ` (${adminEmail})` : ''}
+          </div>
+          
           <div class="task-card">
             <h2>${task.title}</h2>
             <p>${task.description || 'No description provided'}</p>
@@ -171,7 +223,11 @@ function getEmailTemplate(member, task, type) {
             ${task.assignment_reason ? `<p><strong>Assignment Reason:</strong> ${task.assignment_reason}</p>` : ''}
           </div>
           
-          <a href="${frontendUrl}/dashboard/tasks" class="button">View Task</a>
+          <a href="${frontendUrl}/employee/tasks" class="button">View Task</a>
+          
+          <p style="margin-top: 20px; font-size: 14px; color: #6b7280;">
+            💡 <em>Reply to this email to contact ${adminName} directly.</em>
+          </p>
         </div>
         <div class="footer">
           <p>AutoExec AI - Intelligent Meeting-to-Execution System</p>

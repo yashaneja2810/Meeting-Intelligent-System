@@ -11,7 +11,14 @@ class TaskExtractorAgent:
         """
         Extract structured tasks from meeting transcript with enhanced keyword extraction.
         """
+        current_date = datetime.now()
+        current_year = current_date.year
+        
         prompt = f"""You are an expert Task Extraction Agent. Extract all actionable tasks from the meeting transcript.
+
+CURRENT DATE CONTEXT:
+Today's Date: {current_date.strftime('%B %d, %Y')} ({current_date.strftime('%A')})
+Current Year: {current_year}
 
 Meeting Analysis Context:
 {json.dumps(analysis, indent=2)}
@@ -49,13 +56,15 @@ PRIORITY INFERENCE:
 - "when possible", "eventually", "nice to have" → low
 - Default → medium
 
-DEADLINE INFERENCE:
-- "by Friday", "end of week" → Calculate date
-- "next week" → 7 days from now
-- "by end of month" → Last day of current month
-- "tomorrow" → Next day
-- "today" → Current day
+DEADLINE INFERENCE (IMPORTANT - USE CURRENT YEAR {current_year}):
+- "by Friday", "end of week" → Calculate date in current/next week of {current_year}
+- "next week" → 7 days from today ({current_date.strftime('%Y-%m-%d')})
+- "by end of month" → Last day of current month in {current_year}
+- "tomorrow" → {(current_date + timedelta(days=1)).strftime('%Y-%m-%d')}
+- "today" → {current_date.strftime('%Y-%m-%d')}
+- "March 29" or similar → Use {current_year} as the year
 - No mention → null
+- ALWAYS use year {current_year} or later, NEVER use past years
 
 TASK EXTRACTION RULES:
 - Only extract clear, actionable tasks
@@ -106,27 +115,66 @@ Return ONLY valid JSON."""
             raise
     
     def _process_deadline(self, deadline_str: Any) -> str:
-        """Process deadline string into ISO format."""
+        """Process deadline string into ISO format with intelligent year detection."""
         if not deadline_str or deadline_str == "null":
             return None
         
         if isinstance(deadline_str, str):
             # Try to parse common formats
             deadline_lower = deadline_str.lower()
+            current_date = datetime.now()
             
+            # Handle relative dates
             if "today" in deadline_lower:
-                return datetime.now().isoformat()
+                return current_date.isoformat()
             elif "tomorrow" in deadline_lower:
-                return (datetime.now() + timedelta(days=1)).isoformat()
-            elif "week" in deadline_lower:
-                return (datetime.now() + timedelta(days=7)).isoformat()
-            elif "month" in deadline_lower:
-                return (datetime.now() + timedelta(days=30)).isoformat()
+                return (current_date + timedelta(days=1)).isoformat()
+            elif "week" in deadline_lower or "7 days" in deadline_lower:
+                return (current_date + timedelta(days=7)).isoformat()
+            elif "month" in deadline_lower or "30 days" in deadline_lower:
+                return (current_date + timedelta(days=30)).isoformat()
+            elif "end of week" in deadline_lower or "friday" in deadline_lower:
+                # Calculate days until Friday
+                days_until_friday = (4 - current_date.weekday()) % 7
+                if days_until_friday == 0:
+                    days_until_friday = 7
+                return (current_date + timedelta(days=days_until_friday)).isoformat()
             
-            # Try to parse ISO format
+            # Try to parse ISO format or date strings
             try:
+                # Handle ISO format
                 dt = datetime.fromisoformat(deadline_str.replace('Z', '+00:00'))
+                
+                # Smart year correction: if parsed date is in the past, assume current/next year
+                if dt.year < current_date.year:
+                    # Update to current year
+                    dt = dt.replace(year=current_date.year)
+                    
+                    # If still in the past, move to next year
+                    if dt < current_date:
+                        dt = dt.replace(year=current_date.year + 1)
+                
                 return dt.isoformat()
+            except:
+                pass
+            
+            # Try to parse common date formats (MM/DD, DD-MM, etc.)
+            try:
+                # Try various date formats
+                for fmt in ["%m/%d", "%d/%m", "%m-%d", "%d-%m", "%B %d", "%b %d"]:
+                    try:
+                        # Parse without year
+                        dt = datetime.strptime(deadline_str, fmt)
+                        # Add current year
+                        dt = dt.replace(year=current_date.year)
+                        
+                        # If date is in the past, use next year
+                        if dt < current_date:
+                            dt = dt.replace(year=current_date.year + 1)
+                        
+                        return dt.isoformat()
+                    except:
+                        continue
             except:
                 pass
         
