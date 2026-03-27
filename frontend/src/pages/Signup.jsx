@@ -53,102 +53,119 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 bg-white">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-apple-gray selection:bg-black selection:text-white">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-md"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-[440px]"
       >
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-block mb-4">
-            <div className="w-16 h-16 bg-black rounded-lg flex items-center justify-center mx-auto">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        <div className="text-center mb-10 text-black">
+          <Link to="/" className="inline-block mb-6 hover:scale-105 transition-transform duration-300">
+            <div className="w-16 h-16 bg-black rounded-[1.25rem] flex items-center justify-center mx-auto shadow-apple">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-          </div>
-          <h1 className="text-3xl font-bold text-black mb-2">AutoExec AI</h1>
-          <p className="text-gray-600">Start your intelligent automation journey</p>
+          </Link>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Create your account</h1>
+          <p className="text-gray-500 font-medium">Start automating your meetings today.</p>
         </div>
 
         {/* Signup Card */}
-        <div className="border border-gray-200 rounded-lg p-8 bg-white shadow-sm">
-          <form onSubmit={handleSignup} className="space-y-5">
+        <div className="surface p-10 md:p-12 shadow-2xl shadow-black/5 ring-1 ring-black/5 border-transparent">
+          <form onSubmit={handleSignup} className="space-y-6">
             {error && (
-              <div className="bg-gray-100 border border-gray-300 text-gray-900 p-4 rounded-lg text-sm">
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl text-sm font-medium flex gap-3 items-start"
+              >
+                <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
                 {error}
-              </div>
+              </motion.div>
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">
                 Full Name
               </label>
               <input
                 type="text"
                 value={formData.displayName}
                 onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                className="input-field"
+                className="input-field bg-gray-50/50 py-3.5"
                 placeholder="John Doe"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">
                 Email Address
               </label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="input-field"
-                placeholder="you@example.com"
+                className="input-field bg-gray-50/50 py-3.5"
+                placeholder="name@company.com"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 ml-1">
                 Password
               </label>
               <input
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="input-field"
+                className="input-field bg-gray-50/50 py-3.5 font-mono text-lg tracking-widest placeholder:tracking-normal placeholder:font-sans placeholder:text-base placeholder:text-gray-400"
                 placeholder="••••••••"
                 minLength={6}
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+              <p className="text-[11px] font-medium text-gray-400 mt-2 ml-2 tracking-wide">Must be at least 6 characters.</p>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed py-3"
+              className="w-full btn-primary disabled:opacity-50 disabled:scale-100 py-4 mt-8 text-base shadow-md hover:shadow-xl"
             >
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                  <span>Creating Account...</span>
+                </div>
+              ) : (
+                'Create Account'
+              )}
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-center text-gray-600">
+          <div className="mt-8 pt-8 border-t border-gray-100 text-center">
+            <p className="text-gray-500 font-medium text-sm">
               Already have an account?{' '}
-              <Link to="/login" className="text-black font-semibold hover:underline">
-                Login here
+              <Link to="/login" className="text-black font-bold hover:underline">
+                Sign in
               </Link>
             </p>
           </div>
         </div>
 
         {/* Back to Home */}
-        <div className="text-center mt-6">
-          <Link to="/" className="text-gray-600 hover:text-black text-sm font-medium transition-colors">
-            ← Back to Home
+        <div className="text-center mt-12">
+          <Link to="/" className="text-gray-400 hover:text-black text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Website
           </Link>
         </div>
       </motion.div>

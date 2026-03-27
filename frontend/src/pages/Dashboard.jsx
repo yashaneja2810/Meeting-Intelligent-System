@@ -43,7 +43,7 @@ export default function Dashboard() {
 
   const statCards = [
     { label: 'Total Tasks', value: stats.totalTasks },
-    { label: 'Pending', value: stats.pendingTasks },
+    { label: 'Pending Activity', value: stats.pendingTasks },
     { label: 'Completed', value: stats.completedTasks },
     { label: 'Team Members', value: stats.teamMembers }
   ]
@@ -52,7 +52,7 @@ export default function Dashboard() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-black rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-[3px] border-gray-100 border-t-black rounded-full animate-spin"></div>
         </div>
       </DashboardLayout>
     )
@@ -60,125 +60,144 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div>
-        <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+      <div className="max-w-[1200px] mx-auto">
+        <div className="mb-12">
+          <h1 className="text-headline mb-3">Admin Dashboard</h1>
+          <p className="text-gray-500 text-lg font-medium tracking-tight">Overview of your organization's automated workflow.</p>
+        </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Stats Grid - Bento Box Style */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {statCards.map((stat, index) => (
             <motion.div
               key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="liquid-glass p-6"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.05 }}
+              className="surface p-8 flex flex-col justify-between h-36 hover:shadow-apple-hover transition-all duration-300 border-transparent cursor-pointer group"
+              onClick={() => {
+                if (stat.label === 'Team Members') navigate('/dashboard/team')
+                else navigate('/dashboard/tasks')
+              }}
             >
-              <p className="text-gray-600 text-sm mb-1">{stat.label}</p>
-              <p className="text-3xl font-bold text-black">{stat.value}</p>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider group-hover:text-gray-500 transition-colors">{stat.label}</p>
+              <p className="text-5xl font-bold text-black tracking-tight">{stat.value}</p>
             </motion.div>
           ))}
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="relative overflow-hidden rounded-2xl cursor-pointer hover:shadow-xl transition-shadow"
-            onClick={() => navigate('/dashboard/upload')}
-          >
-            <div className="absolute inset-0 bg-black"></div>
-            <div className="relative p-8 text-white">
-              <div className="flex items-center gap-5">
-                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        {/* Quick Actions & Recent Tasks Split */}
+        <div className="grid lg:grid-cols-3 gap-8">
+
+          {/* Quick Actions */}
+          <div className="space-y-6">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-black text-white rounded-[2rem] p-8 cursor-pointer relative overflow-hidden group shadow-apple hover:-translate-y-1 transition-transform duration-300 h-[280px]"
+              onClick={() => navigate('/dashboard/upload')}
+            >
+              <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 transition-transform group-hover:scale-150 duration-700"></div>
+              <div className="relative z-10 flex flex-col h-full justify-between">
+                <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-500">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold mb-1">Upload Meeting</h3>
-                  <p className="text-gray-300">Process a new meeting transcript with AI</p>
+                  <h3 className="text-3xl font-bold mb-2 tracking-tight">Upload Meeting</h3>
+                  <p className="text-white/70 font-medium text-lg leading-snug">Process a new transcript and let AI extract action items instantly.</p>
                 </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="liquid-glass p-8 cursor-pointer hover:shadow-xl transition-shadow"
-            onClick={() => navigate('/dashboard/tasks')}
-          >
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 bg-black rounded-xl flex items-center justify-center shadow-lg">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="surface p-8 cursor-pointer group hover:-translate-y-1 transition-transform duration-300 rounded-[2rem] border-transparent shadow-sm flex items-center gap-6"
+              onClick={() => navigate('/dashboard/team')}
+            >
+              <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100 group-hover:bg-black group-hover:text-white transition-colors duration-300 text-black shrink-0">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
               </div>
               <div>
-                <h3 className="text-2xl font-bold mb-1 text-black">View All Tasks</h3>
-                <p className="text-gray-600">Manage and track your team's tasks</p>
+                <h3 className="text-xl font-bold text-black mb-1 tracking-tight">Add Team</h3>
+                <p className="text-gray-500 font-medium text-sm">Expand your workforce</p>
               </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Recent Tasks */}
-        <div className="liquid-glass p-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-black">Recent Tasks</h2>
-            <button
-              onClick={() => navigate('/dashboard/tasks')}
-              className="text-black font-semibold hover:underline text-sm flex items-center gap-2"
-            >
-              View All
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+            </motion.div>
           </div>
 
-          {recentTasks.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          {/* Recent Tasks */}
+          <div className="lg:col-span-2 surface p-0 overflow-hidden shadow-sm border-transparent flex flex-col">
+            <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-2xl font-bold text-black tracking-tight">Recent Activity</h2>
+              <button
+                onClick={() => navigate('/dashboard/tasks')}
+                className="text-black font-semibold hover:text-gray-500 text-sm flex items-center gap-1 transition-colors"
+              >
+                View All
+                <svg className="w-4 h-4 mt-[1px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </div>
-              <p className="text-gray-600 font-semibold text-lg">No tasks yet</p>
-              <p className="text-gray-500 text-sm mt-1">Upload a meeting to get started</p>
+              </button>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {recentTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="glass-card p-5 cursor-pointer hover:shadow-lg transition-shadow"
-                  onClick={() => navigate('/dashboard/tasks')}
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="font-semibold text-black">{task.title}</h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
-                      task.status === 'completed' ? 'bg-black text-white' :
-                      task.status === 'in_progress' ? 'bg-gray-200 text-black' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
-                      {task.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-3">{task.description}</p>
-                  {task.assigned_member && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <div className="w-6 h-6 bg-black rounded-lg flex items-center justify-center text-white font-bold text-xs">
-                        {task.assigned_member.name[0]}
-                      </div>
-                      <span>Assigned to: {task.assigned_member.name}</span>
-                    </div>
-                  )}
+
+            {recentTasks.length === 0 ? (
+              <div className="text-center py-20 px-8 flex-1 flex flex-col items-center justify-center">
+                <div className="w-20 h-20 bg-gray-50 rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-100">
+                  <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
                 </div>
-              ))}
-            </div>
-          )}
+                <p className="text-black font-semibold text-xl mb-2 tracking-tight">No tasks yet</p>
+                <p className="text-gray-400 text-sm font-medium">Upload a meeting transcript to let AI create tasks.</p>
+                <button
+                  onClick={() => navigate('/dashboard/upload')}
+                  className="mt-6 btn-primary px-6 py-2"
+                >
+                  Upload First Meeting
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100 flex-1 overflow-auto custom-scrollbar">
+                {recentTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="p-6 hover:bg-gray-50/80 transition-colors cursor-pointer group flex flex-col justify-between"
+                    onClick={() => navigate('/dashboard/tasks')}
+                  >
+                    <div className="flex justify-between items-start mb-2 gap-4">
+                      <h3 className="font-semibold text-black text-lg tracking-tight group-hover:text-primary-600 transition-colors line-clamp-1">{task.title}</h3>
+                      <span className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase shadow-sm border ${task.status === 'completed' ? 'bg-black text-white border-black' :
+                          task.status === 'in_progress' ? 'bg-white text-black border-gray-200' :
+                            'bg-gray-50 text-gray-500 border-gray-200'
+                        }`}>
+                        {task.status.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <p className="text-sm text-gray-500 mb-4 line-clamp-1">{task.description}</p>
+
+                    {task.assigned_member ? (
+                      <div className="mt-auto pt-3 border-t border-gray-100/50 flex items-center gap-2 text-sm text-gray-600 font-medium">
+                        <div className="w-6 h-6 bg-black rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                          {task.assigned_member.name[0].toUpperCase()}
+                        </div>
+                        <span>Assigned to <span className="text-black font-semibold">{task.assigned_member.name}</span></span>
+                      </div>
+                    ) : (
+                      <div className="mt-auto pt-3 border-t border-gray-100/50 flex items-center gap-2 text-sm text-gray-400 font-medium italic">
+                        Unassigned
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </DashboardLayout>

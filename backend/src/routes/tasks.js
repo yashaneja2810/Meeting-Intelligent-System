@@ -123,4 +123,47 @@ router.post('/:id/reassign', async (req, res) => {
   }
 });
 
+// Delete task (admin only) - cascades to related data
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify task belongs to the user (admin)
+    const { data: task, error: taskError } = await supabaseAdmin
+      .from('tasks')
+      .select('id, title')
+      .eq('id', id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (taskError || !task) {
+      return res.status(404).json({ error: 'Task not found or unauthorized' });
+    }
+
+    // Delete task - cascade will handle related data (audit_logs, notifications, escalations)
+    const { error: deleteError } = await supabaseAdmin
+      .from('tasks')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', req.user.id);
+
+    if (deleteError) throw deleteError;
+
+    // Log the deletion
+    await supabaseAdmin.from('audit_logs').insert({
+      user_id: req.user.id,
+      task_id: null, // Task is deleted, so no reference
+      agent_name: 'Manual',
+      action: 'Task Deleted',
+      reasoning: `Task "${task.title}" was deleted by admin`,
+      input_data: { deleted_task_id: id, task_title: task.title }
+    });
+
+    res.json({ success: true, message: 'Task and related data deleted successfully' });
+  } catch (error) {
+    console.error('Delete task error:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
 export default router;
