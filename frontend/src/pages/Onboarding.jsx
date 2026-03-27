@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '@/lib/api.js'
-import { useAuthStore } from '@/store/authStore.js'
+import { api } from '@/lib'
+import { useAuthStore } from '@/store'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function Onboarding() {

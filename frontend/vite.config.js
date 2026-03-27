@@ -25,9 +25,14 @@ export default defineConfig({
     },
     commonjsOptions: {
       include: [/node_modules/]
-    }
+    },
+    target: 'esnext',
+    minify: 'esbuild'
   },
   optimizeDeps: {
-    include: ['@supabase/supabase-js', 'zustand']
+    include: ['@supabase/supabase-js', 'zustand', 'react', 'react-dom', 'react-router-dom']
+  },
+  esbuild: {
+    logOverride: { 'this-is-undefined-in-esm': 'silent' }
   }
 })

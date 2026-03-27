@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { supabase } from '@/lib/supabase.js'
+import { supabase } from '@/lib'
 
 export const useAuthStore = create((set) => ({
   user: null,
