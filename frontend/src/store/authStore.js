@@ -11,9 +11,24 @@ export const useAuthStore = create((set) => ({
       const { data: { session } } = await supabase.auth.getSession()
       
       if (session?.user) {
-        // Use the API to get profile instead of direct Supabase call
+        // Try to fetch profile from API first
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/users/profile`, {
+          const apiUrl = import.meta.env.VITE_API_URL
+          
+          if (!apiUrl) {
+            console.error('VITE_API_URL is not defined')
+            // Fallback to direct Supabase query
+            const { data: profile } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
+            
+            set({ user: session.user, profile, loading: false })
+            return
+          }
+
+          const response = await fetch(`${apiUrl}/users/profile`, {
             headers: {
               'Authorization': `Bearer ${session.access_token}`,
               'Content-Type': 'application/json'
@@ -24,11 +39,31 @@ export const useAuthStore = create((set) => ({
             const profile = await response.json()
             set({ user: session.user, profile, loading: false })
           } else {
-            set({ user: session.user, profile: null, loading: false })
+            console.error('Profile fetch failed:', response.status, response.statusText)
+            // Fallback to direct Supabase query
+            const { data: profile } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
+            
+            set({ user: session.user, profile, loading: false })
           }
         } catch (err) {
           console.error('Profile fetch error:', err)
-          set({ user: session.user, profile: null, loading: false })
+          // Fallback to direct Supabase query
+          try {
+            const { data: profile } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
+            
+            set({ user: session.user, profile, loading: false })
+          } catch (supabaseErr) {
+            console.error('Supabase profile fetch error:', supabaseErr)
+            set({ user: session.user, profile: null, loading: false })
+          }
         }
       } else {
         set({ loading: false })
@@ -37,7 +72,21 @@ export const useAuthStore = create((set) => ({
       supabase.auth.onAuthStateChange(async (event, session) => {
         if (session?.user) {
           try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/users/profile`, {
+            const apiUrl = import.meta.env.VITE_API_URL
+            
+            if (!apiUrl) {
+              // Fallback to direct Supabase query
+              const { data: profile } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .single()
+              
+              set({ user: session.user, profile })
+              return
+            }
+
+            const response = await fetch(`${apiUrl}/users/profile`, {
               headers: {
                 'Authorization': `Bearer ${session.access_token}`,
                 'Content-Type': 'application/json'
@@ -48,11 +97,30 @@ export const useAuthStore = create((set) => ({
               const profile = await response.json()
               set({ user: session.user, profile })
             } else {
-              set({ user: session.user, profile: null })
+              // Fallback to direct Supabase query
+              const { data: profile } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .single()
+              
+              set({ user: session.user, profile })
             }
           } catch (err) {
             console.error('Profile fetch error:', err)
-            set({ user: session.user, profile: null })
+            // Fallback to direct Supabase query
+            try {
+              const { data: profile } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .single()
+              
+              set({ user: session.user, profile })
+            } catch (supabaseErr) {
+              console.error('Supabase profile fetch error:', supabaseErr)
+              set({ user: session.user, profile: null })
+            }
           }
         } else {
           set({ user: null, profile: null })
