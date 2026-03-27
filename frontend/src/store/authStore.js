@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase.js'
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -72,5 +72,7 @@ export const useAuthStore = create((set) => ({
   }
 }))
 
-// Initialize on load
-useAuthStore.getState().initialize()
+// Initialize on load - but only in browser environment
+if (typeof window !== 'undefined') {
+  useAuthStore.getState().initialize()
+}

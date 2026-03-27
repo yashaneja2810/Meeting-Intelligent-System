@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../lib/api'
+import { api } from '@/lib/api.js'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function InviteNotification() {

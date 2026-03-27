@@ -7,6 +7,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@/lib': path.resolve(__dirname, './src/lib'),
+      '@/store': path.resolve(__dirname, './src/store'),
+      '@/components': path.resolve(__dirname, './src/components'),
+      '@/pages': path.resolve(__dirname, './src/pages')
     },
     extensions: ['.mjs', '.js', '.jsx', '.json', '.ts', '.tsx']
   },
@@ -18,6 +22,12 @@ export default defineConfig({
       output: {
         manualChunks: undefined
       }
+    },
+    commonjsOptions: {
+      include: [/node_modules/]
     }
+  },
+  optimizeDeps: {
+    include: ['@supabase/supabase-js', 'zustand']
   }
 })
