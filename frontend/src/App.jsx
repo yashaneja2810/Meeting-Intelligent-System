@@ -1,22 +1,22 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { useAuthStore } from './store/authStore.js'
-import LandingPage from './pages/LandingPage.jsx'
-import Login from './pages/Login.jsx'
-import Signup from './pages/Signup.jsx'
-import Onboarding from './pages/Onboarding.jsx'
+import { useAuthStore } from './store/authStore'
+import LandingPage from './pages/LandingPage'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
+import Onboarding from './pages/Onboarding'
 
 // Admin Pages
-import AdminDashboard from './pages/admin/AdminDashboard.jsx'
-import UploadMeeting from './pages/UploadMeeting.jsx'
-import Tasks from './pages/Tasks.jsx'
-import AuditLogs from './pages/AuditLogs.jsx'
-import TeamManagement from './pages/TeamManagement.jsx'
-import Invites from './pages/Invites.jsx'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import UploadMeeting from './pages/UploadMeeting'
+import Tasks from './pages/Tasks'
+import AuditLogs from './pages/AuditLogs'
+import TeamManagement from './pages/TeamManagement'
+import Invites from './pages/Invites'
 
 // Employee Pages
-import EmployeeDashboard from './pages/employee/EmployeeDashboard.jsx'
-import MyTasks from './pages/MyTasks.jsx'
-import Organizations from './pages/employee/Organizations.jsx'
+import EmployeeDashboard from './pages/employee/EmployeeDashboard'
+import MyTasks from './pages/MyTasks'
+import Organizations from './pages/employee/Organizations'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuthStore()

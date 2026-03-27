@@ -1,8 +1,8 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore.js'
+import { useAuthStore } from '../store/authStore'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import InviteNotification from './InviteNotification.jsx'
+import InviteNotification from './InviteNotification'
 
 export default function DashboardLayout({ children }) {
   const location = useLocation()

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../../lib/api.js'
-import DashboardLayout from '../../components/DashboardLayout.jsx'
+import { api } from '../../lib/api'
+import DashboardLayout from '../../components/DashboardLayout'
 import { motion } from 'framer-motion'
 
 export default function EmployeeDashboard() {
