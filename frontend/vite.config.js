@@ -6,13 +6,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@/lib': path.resolve(__dirname, './src/lib'),
-      '@/store': path.resolve(__dirname, './src/store'),
-      '@/components': path.resolve(__dirname, './src/components'),
-      '@/pages': path.resolve(__dirname, './src/pages')
-    },
-    extensions: ['.mjs', '.js', '.jsx', '.json', '.ts', '.tsx']
+      '@': path.resolve(__dirname, './src')
+    }
   },
   server: {
     port: 5173
@@ -22,17 +17,6 @@ export default defineConfig({
       output: {
         manualChunks: undefined
       }
-    },
-    commonjsOptions: {
-      include: [/node_modules/]
-    },
-    target: 'esnext',
-    minify: 'esbuild'
-  },
-  optimizeDeps: {
-    include: ['@supabase/supabase-js', 'zustand', 'react', 'react-dom', 'react-router-dom']
-  },
-  esbuild: {
-    logOverride: { 'this-is-undefined-in-esm': 'silent' }
+    }
   }
 })

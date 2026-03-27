@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api } from '@/lib'
-import { DashboardLayout } from '@/components'
+import { api } from '@/lib/api'
+import DashboardLayout from '@/components/DashboardLayout'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function TeamManagement() {
