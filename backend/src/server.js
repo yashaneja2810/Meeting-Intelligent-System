@@ -11,6 +11,7 @@ import auditRoutes from './routes/audit.js';
 import inviteRoutes from './routes/invites.js';
 import myTasksRoutes from './routes/myTasks.js';
 import { checkDeadlines } from './services/monitoring.js';
+import { startKeepAlive } from './services/ai.js';
 
 dotenv.config();
 
@@ -56,7 +57,11 @@ cron.schedule('0 * * * *', async () => {
   }
 });
 
+// Start AI service keep-alive pings
+startKeepAlive();
+
 app.listen(PORT, () => {
   console.log(`🚀 Backend server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🤖 AI Service URL: ${process.env.AI_SERVICE_URL}`);
 });

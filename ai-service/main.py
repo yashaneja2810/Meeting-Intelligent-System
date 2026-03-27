@@ -3,8 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import os
+import logging
+import asyncio
+import httpx
 from dotenv import load_dotenv
 from agents.orchestrator import AgentOrchestrator
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -18,7 +28,52 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-orchestrator = AgentOrchestrator(api_key=os.getenv("GEMINI_API_KEY"))
+# Check for required environment variables
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+BACKEND_API_URL = os.getenv("BACKEND_API_URL")  # For keep-alive pings
+
+if not GEMINI_API_KEY:
+    logger.error("GEMINI_API_KEY environment variable is not set!")
+else:
+    logger.info("GEMINI_API_KEY is configured")
+
+if BACKEND_API_URL:
+    logger.info(f"BACKEND_API_URL is configured: {BACKEND_API_URL}")
+else:
+    logger.warning("BACKEND_API_URL is not set, backend keep-alive disabled")
+
+try:
+    orchestrator = AgentOrchestrator(api_key=GEMINI_API_KEY)
+    logger.info("AgentOrchestrator initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize AgentOrchestrator: {e}")
+    orchestrator = None
+
+
+# Keep-alive task
+async def keep_backend_alive():
+    """Ping backend every 2 minutes to keep it alive"""
+    if not BACKEND_API_URL:
+        return
+    
+    while True:
+        try:
+            await asyncio.sleep(2 * 60)  # Wait 2 minutes
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{BACKEND_API_URL}/health", timeout=5.0)
+                logger.info(f"✅ Backend is alive: {response.json()}")
+        except Exception as e:
+            logger.warning(f"⚠️ Backend ping failed: {e}")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background tasks on startup"""
+    if BACKEND_API_URL:
+        logger.info("🔄 Starting backend keep-alive task...")
+        asyncio.create_task(keep_backend_alive())
+    else:
+        logger.info("Backend keep-alive disabled (BACKEND_API_URL not set)")
 
 
 class TeamMember(BaseModel):
@@ -42,14 +97,42 @@ class ProcessMeetingResponse(BaseModel):
     audit_logs: List[Dict[str, Any]]
 
 
+@app.get("/")
+async def root():
+    return {
+        "service": "AutoExec AI Service",
+        "status": "running",
+        "version": "1.0.0"
+    }
+
+
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "service": "AutoExec AI Service"}
+    health_status = {
+        "status": "ok",
+        "service": "AutoExec AI Service",
+        "gemini_api_configured": bool(GEMINI_API_KEY),
+        "orchestrator_initialized": orchestrator is not None,
+        "backend_keepalive_enabled": bool(BACKEND_API_URL)
+    }
+    logger.info(f"Health check: {health_status}")
+    return health_status
 
 
 @app.post("/process-meeting", response_model=ProcessMeetingResponse)
 async def process_meeting(request: ProcessMeetingRequest):
     try:
+        if not orchestrator:
+            logger.error("Orchestrator not initialized")
+            raise HTTPException(
+                status_code=500,
+                detail="AI service not properly initialized. Check GEMINI_API_KEY."
+            )
+        
+        logger.info(f"Processing meeting {request.meeting_id} for user {request.user_id}")
+        logger.info(f"Team members count: {len(request.team_members)}")
+        logger.info(f"Transcript length: {len(request.transcript)} characters")
+        
         result = await orchestrator.process_meeting(
             transcript=request.transcript,
             team_members=[member.dict() for member in request.team_members],
@@ -57,15 +140,19 @@ async def process_meeting(request: ProcessMeetingRequest):
             meeting_id=request.meeting_id
         )
         
+        logger.info(f"Meeting processed successfully. Tasks: {len(result.get('tasks', []))}, Logs: {len(result.get('audit_logs', []))}")
+        
         return ProcessMeetingResponse(
             tasks=result["tasks"],
             audit_logs=result["audit_logs"]
         )
     except Exception as e:
+        logger.error(f"Error processing meeting: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    logger.info(f"Starting server on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
