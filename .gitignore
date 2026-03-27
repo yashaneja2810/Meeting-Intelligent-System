@@ -111,3 +111,6 @@ celerybeat.pid
 # Environments
 .env.backup
 .venv.backup
+
+# Un-ignore frontend lib
+!frontend/src/lib/
