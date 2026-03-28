@@ -8,6 +8,9 @@ export default function MyTasks() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [selectedTask, setSelectedTask] = useState(null)
+  const [showCompletionModal, setShowCompletionModal] = useState(null)
+  const [completionNotes, setCompletionNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     loadTasks()
@@ -35,6 +38,33 @@ export default function MyTasks() {
     }
   }
 
+  const handleRequestCompletion = (task) => {
+    setShowCompletionModal(task)
+    setCompletionNotes('')
+  }
+
+  const submitCompletionRequest = async () => {
+    if (!showCompletionModal) return
+    
+    setSubmitting(true)
+    try {
+      await api.post('/completion-requests', {
+        taskId: showCompletionModal.id,
+        completionNotes
+      })
+      
+      alert('Completion request submitted! Your admin will review it.')
+      setShowCompletionModal(null)
+      setCompletionNotes('')
+      loadTasks()
+    } catch (err) {
+      console.error('Submit completion request error:', err)
+      alert('Failed to submit completion request')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'urgent': return 'bg-red-50 text-red-600 border-red-200'
@@ -49,6 +79,7 @@ export default function MyTasks() {
     switch (status) {
       case 'completed': return 'bg-black text-white border-black'
       case 'in_progress': return 'bg-white text-black border-gray-200 shadow-sm'
+      case 'pending_review': return 'bg-blue-50 text-blue-600 border-blue-200'
       case 'blocked': return 'bg-red-50 text-red-600 border-red-200'
       default: return 'bg-white text-gray-600 border-gray-200'
     }
@@ -189,12 +220,20 @@ export default function MyTasks() {
                           Mark Blocked
                         </button>
                         <button
-                          onClick={() => updateTaskStatus(task.id, 'completed')}
-                          className="btn-primary py-2 text-sm"
+                          onClick={() => handleRequestCompletion(task)}
+                          className="btn-primary py-2 text-sm bg-green-500 hover:bg-green-600"
                         >
-                          Mark Complete
+                          Request Completion
                         </button>
                       </>
+                    )}
+                    {task.status === 'pending_review' && (
+                      <div className="flex items-center gap-2 text-blue-600 text-sm font-semibold">
+                        <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Pending Admin Review
+                      </div>
                     )}
                     {task.status === 'blocked' && (
                       <button
@@ -291,6 +330,81 @@ export default function MyTasks() {
                 </div>
               </motion.div>
             </div>
+          )}
+        </AnimatePresence>
+
+        {/* Completion Request Modal */}
+        <AnimatePresence>
+          {showCompletionModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              onClick={() => !submitting && setShowCompletionModal(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="surface max-w-lg w-full p-8 border-transparent shadow-2xl"
+              >
+                <div className="w-16 h-16 bg-green-50 rounded-[20px] flex items-center justify-center mb-6 border border-green-200">
+                  <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                
+                <h3 className="text-2xl font-bold text-black mb-3 tracking-tight">Request Task Completion</h3>
+                <p className="text-gray-500 font-medium mb-2">
+                  <strong>{showCompletionModal.title}</strong>
+                </p>
+                <p className="text-gray-500 font-medium mb-6">
+                  Your admin will review this request before marking the task as completed.
+                </p>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Completion Notes (Optional)
+                  </label>
+                  <textarea
+                    value={completionNotes}
+                    onChange={(e) => setCompletionNotes(e.target.value)}
+                    placeholder="Describe what you've accomplished, any challenges faced, or additional context..."
+                    className="input-field min-h-[120px] resize-none"
+                    disabled={submitting}
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    💡 Adding notes helps your admin review the completion faster
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowCompletionModal(null)}
+                    disabled={submitting}
+                    className="flex-1 px-6 py-3.5 bg-gray-100 hover:bg-gray-200 text-black font-semibold rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitCompletionRequest}
+                    disabled={submitting}
+                    className="flex-1 px-6 py-3.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                        <span>Submitting...</span>
+                      </div>
+                    ) : (
+                      'Submit Request'
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>

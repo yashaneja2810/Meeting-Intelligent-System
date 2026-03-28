@@ -12,6 +12,7 @@ import Tasks from '@/pages/Tasks'
 import AuditLogs from '@/pages/AuditLogs'
 import TeamManagement from '@/pages/TeamManagement'
 import Invites from '@/pages/Invites'
+import CompletionRequests from '@/pages/admin/CompletionRequests'
 
 // Employee Pages
 import EmployeeDashboard from '@/pages/employee/EmployeeDashboard'
@@ -49,6 +50,7 @@ function App() {
         <Route path="/admin/audit" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
         <Route path="/admin/team" element={<ProtectedRoute><TeamManagement /></ProtectedRoute>} />
         <Route path="/admin/invites" element={<ProtectedRoute><Invites /></ProtectedRoute>} />
+        <Route path="/admin/completion-requests" element={<ProtectedRoute><CompletionRequests /></ProtectedRoute>} />
         
         {/* Employee Routes */}
         <Route path="/employee/dashboard" element={<ProtectedRoute><EmployeeDashboard /></ProtectedRoute>} />

@@ -10,6 +10,7 @@ import taskRoutes from './routes/tasks.js';
 import auditRoutes from './routes/audit.js';
 import inviteRoutes from './routes/invites.js';
 import myTasksRoutes from './routes/myTasks.js';
+import completionRequestRoutes from './routes/completionRequests.js';
 import { checkDeadlines } from './services/monitoring.js';
 import { startKeepAlive } from './services/ai.js';
 
@@ -32,6 +33,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/my-tasks', myTasksRoutes);
+app.use('/api/completion-requests', completionRequestRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
