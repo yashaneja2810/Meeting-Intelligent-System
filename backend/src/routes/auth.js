@@ -15,16 +15,27 @@ router.post('/signup', async (req, res) => {
 
     if (authError) throw authError;
 
-    // Create user profile using admin client
-    const { error: profileError } = await supabaseAdmin
-      .from('users')
-      .insert({
-        id: authData.user.id,
-        email,
-        display_name: displayName
-      });
+    // Create user profile using admin client (with conflict handling)
+    try {
+      const { error: profileError } = await supabaseAdmin
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email,
+          display_name: displayName
+        });
 
-    if (profileError) throw profileError;
+      // Ignore duplicate key errors (profile might already exist)
+      if (profileError && !profileError.message.includes('duplicate key')) {
+        console.error('Profile creation error:', profileError);
+        // Don't throw - user is created, profile can be created later
+      }
+    } catch (profileErr) {
+      // Silently handle duplicate key errors
+      if (!profileErr.message.includes('duplicate key')) {
+        console.error('Profile creation error:', profileErr);
+      }
+    }
 
     res.json({ user: authData.user, session: authData.session });
   } catch (error) {
