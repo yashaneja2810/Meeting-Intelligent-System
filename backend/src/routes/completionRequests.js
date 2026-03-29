@@ -140,7 +140,10 @@ router.put('/:id', async (req, res) => {
     // Get completion request
     const { data: request, error: fetchError } = await supabaseAdmin
       .from('completion_requests')
-      .select('*, task:tasks!completion_requests_task_id_fkey(id, user_id)')
+      .select(`
+        *,
+        task:tasks!completion_requests_task_id_fkey(id, user_id)
+      `)
       .eq('id', id)
       .single();
 

@@ -89,18 +89,22 @@ CRITICAL REQUIREMENTS:
 - You MUST return the exact ID from the team members list above
 - Do NOT make up IDs or return names/roles instead of IDs
 - If no perfect match exists, choose the best available option
-- Always provide detailed reasoning
+- Keep reasoning BRIEF (maximum 3 short lines, around 100 characters total)
 
 Return ONLY valid JSON in this exact format:
 {{
   "assigned_to": "exact_id_from_team_members_list",
-  "reason": "Detailed explanation: [skill match] + [role alignment] + [workload consideration]",
+  "reason": "Brief 1-2 sentence explanation focusing on key match",
   "confidence": 0.0-1.0
 }}"""
 
         try:
             response = self.model.generate_content(prompt)
             result = self._parse_json_response(response.text)
+            
+            # Truncate reason if too long (max 150 characters)
+            if result.get("reason") and len(result["reason"]) > 150:
+                result["reason"] = result["reason"][:147] + "..."
             
             # Validate assigned_to is a valid UUID
             assigned_id = result.get("assigned_to")

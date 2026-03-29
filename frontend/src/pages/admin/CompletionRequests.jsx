@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import DashboardLayout from '@/components/DashboardLayout'
 import { motion, AnimatePresence } from 'framer-motion'
+import AlertDialog from '@/components/AlertDialog'
 
 export default function CompletionRequests() {
   const [requests, setRequests] = useState([])
@@ -11,6 +12,7 @@ export default function CompletionRequests() {
   const [reviewModal, setReviewModal] = useState(null)
   const [reviewNotes, setReviewNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [alertDialog, setAlertDialog] = useState(null)
 
   useEffect(() => {
     loadRequests()
@@ -48,7 +50,11 @@ export default function CompletionRequests() {
       setReviewNotes('')
     } catch (err) {
       console.error('Review error:', err)
-      alert('Failed to submit review')
+      setAlertDialog({ 
+        title: 'Review Failed', 
+        message: 'Failed to submit review. Please try again.', 
+        variant: 'error' 
+      })
     } finally {
       setSubmitting(false)
     }
@@ -287,6 +293,14 @@ export default function CompletionRequests() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AlertDialog 
+        isOpen={!!alertDialog} 
+        onClose={() => setAlertDialog(null)} 
+        title={alertDialog?.title} 
+        message={alertDialog?.message} 
+        variant={alertDialog?.variant} 
+      />
     </DashboardLayout>
   )
 }

@@ -184,53 +184,216 @@ function getEmailTemplate(member, task, type, admin) {
   const adminName = admin?.display_name || 'Admin';
   const adminEmail = admin?.email || '';
   
-  console.log('Email template admin info:', { adminName, adminEmail }); // Debug log
-  
   return `
     <!DOCTYPE html>
     <html>
     <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; }
-        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-        .task-card { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .admin-info { background: #f3f4f6; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #667eea; }
-        .button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
-        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+          line-height: 1.6;
+          color: #1f2937;
+          background: #f9fafb;
+          padding: 20px 10px;
+        }
+        .container { 
+          max-width: 600px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .header {
+          background: #000000;
+          color: white;
+          padding: 32px 24px;
+          text-align: center;
+        }
+        .header h1 {
+          font-size: 24px;
+          font-weight: 700;
+          margin-bottom: 8px;
+          letter-spacing: -0.5px;
+        }
+        .header p {
+          font-size: 15px;
+          opacity: 0.9;
+          font-weight: 500;
+        }
+        .content {
+          padding: 32px 24px;
+        }
+        .greeting {
+          font-size: 16px;
+          color: #1f2937;
+          margin-bottom: 16px;
+          font-weight: 600;
+        }
+        .message {
+          font-size: 15px;
+          color: #4b5563;
+          margin-bottom: 24px;
+          line-height: 1.6;
+        }
+        .admin-info {
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 16px;
+          margin-bottom: 24px;
+        }
+        .admin-info strong {
+          color: #1f2937;
+          font-size: 14px;
+        }
+        .admin-info span {
+          color: #6b7280;
+          font-size: 14px;
+        }
+        .task-card {
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 24px;
+        }
+        .task-card h2 {
+          font-size: 18px;
+          font-weight: 700;
+          color: #000000;
+          margin-bottom: 12px;
+          letter-spacing: -0.3px;
+        }
+        .task-card p {
+          font-size: 14px;
+          color: #6b7280;
+          margin-bottom: 8px;
+          line-height: 1.5;
+        }
+        .task-card strong {
+          color: #1f2937;
+          font-weight: 600;
+        }
+        .task-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin-top: 16px;
+          padding-top: 16px;
+          border-top: 1px solid #f3f4f6;
+        }
+        .meta-item {
+          font-size: 13px;
+        }
+        .meta-label {
+          color: #9ca3af;
+          font-weight: 500;
+          text-transform: uppercase;
+          font-size: 11px;
+          letter-spacing: 0.5px;
+        }
+        .meta-value {
+          color: #1f2937;
+          font-weight: 600;
+          display: block;
+          margin-top: 4px;
+        }
+        .button {
+          display: inline-block;
+          background: #000000;
+          color: white;
+          padding: 14px 28px;
+          text-decoration: none;
+          border-radius: 12px;
+          font-weight: 600;
+          font-size: 15px;
+          text-align: center;
+          margin: 8px 0;
+        }
+        .note {
+          margin-top: 24px;
+          padding: 16px;
+          background: #f9fafb;
+          border-radius: 12px;
+          font-size: 14px;
+          color: #6b7280;
+          line-height: 1.5;
+        }
+        .footer {
+          text-align: center;
+          padding: 24px;
+          background: #f9fafb;
+          border-top: 1px solid #e5e7eb;
+        }
+        .footer p {
+          font-size: 13px;
+          color: #9ca3af;
+          margin: 4px 0;
+        }
+        
+        @media only screen and (max-width: 600px) {
+          body { padding: 10px 5px; }
+          .container { border-radius: 12px; }
+          .header { padding: 24px 20px; }
+          .header h1 { font-size: 20px; }
+          .content { padding: 24px 20px; }
+          .task-card { padding: 16px; }
+          .button { display: block; width: 100%; }
+        }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <h1>AutoExec AI</h1>
-          <p>${getNotificationTitle(type)}</p>
+          <h1>${getNotificationTitle(type)}</h1>
+          <p>AutoExec AI</p>
         </div>
         <div class="content">
-          <p>Hi ${member.name},</p>
-          <p>${getNotificationMessage(type, task)}</p>
+          <p class="greeting">Hi ${member.name},</p>
+          <p class="message">${getNotificationMessage(type, task)}</p>
           
           <div class="admin-info">
-            <strong>📧 Assigned by:</strong> ${adminName}${adminEmail ? ` (${adminEmail})` : ''}
+            <strong>Assigned by:</strong> <span>${adminName}${adminEmail ? ` • ${adminEmail}` : ''}</span>
           </div>
           
           <div class="task-card">
             <h2>${task.title}</h2>
             <p>${task.description || 'No description provided'}</p>
-            <p><strong>Priority:</strong> ${task.priority}</p>
-            <p><strong>Deadline:</strong> ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'Not set'}</p>
-            ${task.assignment_reason ? `<p><strong>Assignment Reason:</strong> ${task.assignment_reason}</p>` : ''}
+            
+            <div class="task-meta">
+              <div class="meta-item">
+                <div class="meta-label">Priority</div>
+                <div class="meta-value">${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">Deadline</div>
+                <div class="meta-value">${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'Not set'}</div>
+              </div>
+            </div>
+            
+            ${task.assignment_reason ? `
+              <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f3f4f6;">
+                <div class="meta-label">Assignment Reason</div>
+                <p style="margin-top: 8px; font-size: 13px; color: #4b5563; font-style: italic;">
+                  ${task.assignment_reason.length > 150 ? task.assignment_reason.substring(0, 147) + '...' : task.assignment_reason}
+                </p>
+              </div>
+            ` : ''}
           </div>
           
           <a href="${frontendUrl}/employee/tasks" class="button">View Task</a>
           
-          <p style="margin-top: 20px; font-size: 14px; color: #6b7280;">
-            💡 <em>Reply to this email to contact ${adminName} directly.</em>
-          </p>
+          <div class="note">
+            💡 Reply to this email to contact ${adminName} directly.
+          </div>
         </div>
         <div class="footer">
-          <p>AutoExec AI - Intelligent Meeting-to-Execution System</p>
+          <p>AutoExec AI</p>
+          <p>Intelligent Meeting-to-Execution System</p>
         </div>
       </div>
     </body>
