@@ -2,9 +2,9 @@
 
 ## Overview
 
-AutoExec AI is a production-ready SaaS application that uses a multi-agent AI system to convert meeting transcripts into actionable tasks with intelligent assignment and tracking.
+AutoExec AI is a production-ready SaaS application that uses a multi-agent AI system to convert meeting transcripts into actionable tasks with intelligent assignment and tracking. The system employs four specialized AI agents orchestrated to handle complex enterprise workflows with minimal human intervention while maintaining complete auditability.
 
-## Architecture Diagram
+## High-Level Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -451,3 +451,121 @@ For each reminder interval (24h, 48h, 72h):
 - Easy integration
 
 This architecture provides a solid foundation for a production-ready SaaS application with room for growth and enhancement.
+
+
+## External Integrations & Notifications
+
+### Email Notification System
+- **SMTP Integration**: Nodemailer with configurable SMTP transport (Gmail, SendGrid, AWS SES)
+- **Email Types**: 
+  - Task assignment notifications
+  - Deadline reminders (configurable intervals)
+  - Escalation alerts (urgent)
+  - Completion request notifications
+  - Completion review notifications
+  - Team invitation emails
+- **Features**: 
+  - HTML templates with mobile-responsive design
+  - Black & white professional theme
+  - Reply-To headers for direct admin communication
+  - Dynamic sender names showing admin who assigned
+  - Touch-friendly buttons (full-width on mobile)
+  - Assignment reasoning display (max 150 chars)
+- **Delivery**: Asynchronous with status tracking in notifications table
+
+### Slack Integration
+- **Implementation**: Webhook-based notifications per team member
+- **Message Format**: Rich blocks with emoji indicators, task details, priority, deadline
+- **Configuration**: Optional per-team-member webhook URLs and Slack IDs
+- **Dual-Channel**: Supports email + Slack simultaneously
+- **Message Types**:
+  - 🎯 New Task Assigned
+  - ⏰ Task Reminder
+  - 🚨 Task Escalated
+  - ✅ Task Completed
+
+### GitHub Auto-Ticket Assignment (Planned)
+- **Automatic Issue Creation**: Tasks automatically create GitHub issues
+- **Bidirectional Sync**: Status updates sync between AutoExec and GitHub
+- **Label Mapping**: Priority levels (low/medium/high/urgent) map to GitHub labels
+- **Assignee Mapping**: Team members map to GitHub usernames
+- **Milestone Integration**: Task deadlines sync with GitHub milestones
+- **Workflow**:
+  1. Task created → GitHub issue created automatically
+  2. Issue assigned to mapped GitHub user
+  3. Priority added as label
+  4. Deadline set as milestone
+  5. Status updates sync bidirectionally
+  6. Task completed → Issue closed automatically
+
+## Multi-Agent System Details
+
+### Agent Orchestration Workflow
+
+```
+1. Meeting Analyzer Agent
+   Input: Raw transcript
+   Output: Meeting context (type, topics, urgency, participants)
+   Audit: Analysis reasoning logged
+   
+2. Task Extractor Agent
+   Input: Transcript + Meeting context + Current date
+   Output: Structured tasks with priorities, deadlines, keywords
+   Audit: Extraction reasoning logged
+   
+3. Assignment Agent (per task)
+   Input: Task + Team members + Transcript
+   Output: Assigned member ID + Reasoning + Confidence
+   Audit: Assignment decision logged
+   
+4. Audit Agent
+   Input: All agent outputs
+   Output: Comprehensive audit logs
+   Storage: Immutable database records
+```
+
+### Failure Detection & Self-Correction
+
+**Monitoring Service (Cron Job - Hourly):**
+- Checks all pending/in-progress tasks
+- Compares deadlines to current time
+- Sends reminders at configured intervals (24h, 48h, 72h before)
+- Creates escalations for missed deadlines (72h past threshold)
+- Logs all monitoring actions to audit trail
+
+**Escalation System:**
+- Automatic escalation for tasks past deadline
+- Urgent notifications to assignee and admin
+- Escalation records with resolution tracking
+- Audit log entries for accountability
+
+**Self-Correction Mechanisms:**
+- Invalid team member ID validation and correction
+- Past date detection and year correction
+- Fallback assignment based on workload
+- Notification failure handling (non-blocking)
+- Graceful degradation at all layers
+
+## Completion Approval Workflow
+
+Professional task completion system:
+
+1. **Employee Request**: Employee marks task complete and requests approval
+2. **Status Change**: Task status → `pending_review`
+3. **Admin Notification**: Email sent to admin with task details
+4. **Admin Review**: Admin reviews work and approves/rejects with notes
+5. **Status Update**: 
+   - Approved → Task status = `completed`, completed_at timestamp set
+   - Rejected → Task status = `in_progress`, employee notified with feedback
+6. **Employee Notification**: Email sent with review decision and notes
+7. **Audit Trail**: All actions logged for transparency
+
+## Keep-Alive System (Production)
+
+To prevent free-tier service spin-down on Render:
+
+- **Backend → AI Service**: Pings every 2 minutes
+- **AI Service → Backend**: Pings every 2 minutes
+- **Retry Logic**: 3 attempts with 90-second timeout for cold starts
+- **Health Endpoints**: `/health` on both services
+- **Benefits**: Services stay warm, faster response times, better user experience
