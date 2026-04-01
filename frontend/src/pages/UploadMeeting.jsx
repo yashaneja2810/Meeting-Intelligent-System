@@ -8,6 +8,7 @@ export default function UploadMeeting() {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [transcript, setTranscript] = useState('')
+  const [aiProvider, setAiProvider] = useState('gemini')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -17,7 +18,7 @@ export default function UploadMeeting() {
     setLoading(true)
 
     try {
-      await api.post('/meetings', { title, transcript })
+      await api.post('/meetings', { title, transcript, aiProvider })
       navigate('/admin/tasks')
     } catch (err) {
       setError(err.message)
@@ -90,6 +91,55 @@ export default function UploadMeeting() {
                   placeholder="e.g., Engineering Weekly Sync"
                   className="w-full bg-[#FAFAFA] border border-gray-200/80 rounded-2xl text-[16px] font-semibold text-gray-900 px-5 py-4 placeholder:text-gray-400 placeholder:font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 hover:border-gray-300 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]"
                 />
+              </div>
+
+              <div className="mb-8">
+                <label className="block text-[13px] font-bold text-gray-900 mb-3 ml-1 tracking-tight">
+                  AI Provider
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAiProvider('gemini')}
+                    className={`relative px-5 py-4 rounded-2xl text-[15px] font-bold transition-all border-2 ${
+                      aiProvider === 'gemini'
+                        ? 'bg-gray-900 text-white border-gray-900 shadow-[0_4px_14px_0_rgb(0,0,0,0.15)]'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                      </svg>
+                      Gemini
+                    </div>
+                    {aiProvider === 'gemini' && (
+                      <div className="absolute top-2 right-2 w-2 h-2 bg-green-400 rounded-full"></div>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAiProvider('groq')}
+                    className={`relative px-5 py-4 rounded-2xl text-[15px] font-bold transition-all border-2 ${
+                      aiProvider === 'groq'
+                        ? 'bg-gray-900 text-white border-gray-900 shadow-[0_4px_14px_0_rgb(0,0,0,0.15)]'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                      </svg>
+                      Groq
+                    </div>
+                    {aiProvider === 'groq' && (
+                      <div className="absolute top-2 right-2 w-2 h-2 bg-green-400 rounded-full"></div>
+                    )}
+                  </button>
+                </div>
+                <p className="text-gray-500 text-[12px] font-medium mt-2 ml-1">
+                  {aiProvider === 'gemini' ? 'Google Gemini 2.0 Flash - Balanced performance' : 'Groq Llama 3.3 70B - Ultra-fast inference'}
+                </p>
               </div>
 
               <div className="mb-10">

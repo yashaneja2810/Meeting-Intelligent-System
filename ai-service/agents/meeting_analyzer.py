@@ -3,8 +3,9 @@ from typing import Dict, Any
 
 
 class MeetingAnalyzerAgent:
-    def __init__(self, model):
+    def __init__(self, model, ai_provider: str = "gemini"):
         self.model = model
+        self.ai_provider = ai_provider
         
     async def analyze(self, transcript: str) -> Dict[str, Any]:
         """
@@ -26,8 +27,19 @@ Provide a structured JSON response with:
 Return ONLY valid JSON, no additional text."""
 
         try:
-            response = self.model.generate_content(prompt)
-            result = self._parse_json_response(response.text)
+            if self.ai_provider == "groq":
+                response = self.model.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=2000
+                )
+                response_text = response.choices[0].message.content
+            else:  # gemini
+                response = self.model.generate_content(prompt)
+                response_text = response.text
+            
+            result = self._parse_json_response(response_text)
             return result
         except Exception as e:
             print(f"Meeting analysis error: {e}")

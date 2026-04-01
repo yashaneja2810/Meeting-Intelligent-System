@@ -4,8 +4,9 @@ from datetime import datetime, timedelta
 
 
 class TaskExtractorAgent:
-    def __init__(self, model):
+    def __init__(self, model, ai_provider: str = "gemini"):
         self.model = model
+        self.ai_provider = ai_provider
         
     async def extract(self, transcript: str, analysis: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -76,8 +77,19 @@ TASK EXTRACTION RULES:
 Return ONLY valid JSON."""
 
         try:
-            response = self.model.generate_content(prompt)
-            result = self._parse_json_response(response.text)
+            if self.ai_provider == "groq":
+                response = self.model.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=4000
+                )
+                response_text = response.choices[0].message.content
+            else:  # gemini
+                response = self.model.generate_content(prompt)
+                response_text = response.text
+            
+            result = self._parse_json_response(response_text)
             
             # Process deadlines
             for task in result.get("tasks", []):

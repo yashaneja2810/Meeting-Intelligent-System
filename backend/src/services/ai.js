@@ -32,7 +32,7 @@ async function pingAIService() {
   }
 }
 
-export async function processTranscript(meetingId, userId, transcript) {
+export async function processTranscript(meetingId, userId, transcript, aiProvider = 'gemini') {
   try {
     // Update meeting status
     await supabaseAdmin
@@ -63,7 +63,8 @@ export async function processTranscript(meetingId, userId, transcript) {
           meeting_id: meetingId,
           user_id: userId,
           transcript,
-          team_members: teamMembers
+          team_members: teamMembers,
+          ai_provider: aiProvider
         }, {
           timeout: attempts === 1 ? 90000 : 60000 // First attempt: 90s (cold start), others: 60s
         });

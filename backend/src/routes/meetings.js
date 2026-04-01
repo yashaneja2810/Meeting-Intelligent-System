@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { title, transcript } = req.body;
+    const { title, transcript, aiProvider = 'gemini' } = req.body;
 
     if (!transcript || transcript.trim().length === 0) {
       return res.status(400).json({ error: 'Transcript is required' });
@@ -44,8 +44,8 @@ router.post('/', async (req, res) => {
 
     if (error) throw error;
 
-    // Process transcript asynchronously
-    processTranscript(meeting.id, req.user.id, transcript).catch(err => {
+    // Process transcript asynchronously with selected AI provider
+    processTranscript(meeting.id, req.user.id, transcript, aiProvider).catch(err => {
       console.error('Transcript processing error:', err);
     });
 

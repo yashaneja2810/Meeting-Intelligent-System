@@ -30,12 +30,18 @@ app.add_middleware(
 
 # Check for required environment variables
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 BACKEND_API_URL = os.getenv("BACKEND_API_URL")  # For keep-alive pings
 
 if not GEMINI_API_KEY:
-    logger.error("GEMINI_API_KEY environment variable is not set!")
+    logger.warning("GEMINI_API_KEY environment variable is not set!")
 else:
     logger.info("GEMINI_API_KEY is configured")
+
+if not GROQ_API_KEY:
+    logger.warning("GROQ_API_KEY environment variable is not set!")
+else:
+    logger.info("GROQ_API_KEY is configured")
 
 if BACKEND_API_URL:
     logger.info(f"BACKEND_API_URL is configured: {BACKEND_API_URL}")
@@ -43,7 +49,10 @@ else:
     logger.warning("BACKEND_API_URL is not set, backend keep-alive disabled")
 
 try:
-    orchestrator = AgentOrchestrator(api_key=GEMINI_API_KEY)
+    orchestrator = AgentOrchestrator(
+        gemini_api_key=GEMINI_API_KEY,
+        groq_api_key=GROQ_API_KEY
+    )
     logger.info("AgentOrchestrator initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize AgentOrchestrator: {e}")
@@ -90,6 +99,7 @@ class ProcessMeetingRequest(BaseModel):
     user_id: str
     transcript: str
     team_members: List[TeamMember]
+    ai_provider: str = "gemini"  # "gemini" or "groq"
 
 
 class ProcessMeetingResponse(BaseModel):
@@ -112,6 +122,7 @@ async def health_check():
         "status": "ok",
         "service": "AutoExec AI Service",
         "gemini_api_configured": bool(GEMINI_API_KEY),
+        "groq_api_configured": bool(GROQ_API_KEY),
         "orchestrator_initialized": orchestrator is not None,
         "backend_keepalive_enabled": bool(BACKEND_API_URL)
     }
@@ -126,10 +137,29 @@ async def process_meeting(request: ProcessMeetingRequest):
             logger.error("Orchestrator not initialized")
             raise HTTPException(
                 status_code=500,
-                detail="AI service not properly initialized. Check GEMINI_API_KEY."
+                detail="AI service not properly initialized. Check API keys."
             )
         
-        logger.info(f"Processing meeting {request.meeting_id} for user {request.user_id}")
+        # Validate AI provider
+        if request.ai_provider not in ["gemini", "groq"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid AI provider. Must be 'gemini' or 'groq'."
+            )
+        
+        # Check if selected provider is configured
+        if request.ai_provider == "gemini" and not GEMINI_API_KEY:
+            raise HTTPException(
+                status_code=400,
+                detail="Gemini API key not configured."
+            )
+        if request.ai_provider == "groq" and not GROQ_API_KEY:
+            raise HTTPException(
+                status_code=400,
+                detail="Groq API key not configured."
+            )
+        
+        logger.info(f"Processing meeting {request.meeting_id} for user {request.user_id} using {request.ai_provider}")
         logger.info(f"Team members count: {len(request.team_members)}")
         logger.info(f"Transcript length: {len(request.transcript)} characters")
         
@@ -137,7 +167,8 @@ async def process_meeting(request: ProcessMeetingRequest):
             transcript=request.transcript,
             team_members=[member.dict() for member in request.team_members],
             user_id=request.user_id,
-            meeting_id=request.meeting_id
+            meeting_id=request.meeting_id,
+            ai_provider=request.ai_provider
         )
         
         logger.info(f"Meeting processed successfully. Tasks: {len(result.get('tasks', []))}, Logs: {len(result.get('audit_logs', []))}")

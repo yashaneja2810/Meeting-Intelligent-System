@@ -3,8 +3,9 @@ from typing import Dict, Any, List
 
 
 class AssignmentAgent:
-    def __init__(self, model):
+    def __init__(self, model, ai_provider: str = "gemini"):
         self.model = model
+        self.ai_provider = ai_provider
         
     async def assign(
         self,
@@ -29,7 +30,7 @@ class AssignmentAgent:
                 if mentioned_person.lower() in member["name"].lower():
                     return {
                         "assigned_to": member["id"],
-                        "reason": f"Explicitly mentioned in meeting: '{mentioned_person}'",
+                        "reason": f"Explicitly mentioned: '{mentioned_person}'",
                         "confidence": 0.95
                     }
         
@@ -99,8 +100,19 @@ Return ONLY valid JSON in this exact format:
 }}"""
 
         try:
-            response = self.model.generate_content(prompt)
-            result = self._parse_json_response(response.text)
+            if self.ai_provider == "groq":
+                response = self.model.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=500
+                )
+                response_text = response.choices[0].message.content
+            else:  # gemini
+                response = self.model.generate_content(prompt)
+                response_text = response.text
+            
+            result = self._parse_json_response(response_text)
             
             # Truncate reason if too long (max 150 characters)
             if result.get("reason") and len(result["reason"]) > 150:
@@ -131,7 +143,7 @@ Return ONLY valid JSON in this exact format:
             # If still not found, use first team member
             if not valid_member and team_members:
                 valid_member = team_members[0]
-                result["reason"] = f"AI returned invalid ID, assigned to {valid_member['name']} based on availability"
+                result["reason"] = f"AI returned invalid ID, assigned to {valid_member['name']}"
                 result["confidence"] = 0.5
             
             if valid_member:
@@ -151,7 +163,7 @@ Return ONLY valid JSON in this exact format:
                 sorted_members = sorted(team_members, key=lambda m: m.get("workload_score", 0))
                 return {
                     "assigned_to": sorted_members[0]["id"],
-                    "reason": "Assigned to team member with lowest workload (fallback)",
+                    "reason": "Assigned to team member with lowest workload",
                     "confidence": 0.6
                 }
             
