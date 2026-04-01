@@ -10,21 +10,87 @@ export default function UploadMeeting() {
   const [transcript, setTranscript] = useState('')
   const [aiProvider, setAiProvider] = useState('gemini')
   const [loading, setLoading] = useState(false)
+  const [processing, setProcessing] = useState(false)
+  const [completed, setCompleted] = useState(false)
+  const [meetingId, setMeetingId] = useState(null)
   const [error, setError] = useState('')
+  const [processingTime, setProcessingTime] = useState(0)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
+    setProcessingTime(0)
 
     try {
-      await api.post('/meetings', { title, transcript, aiProvider })
-      navigate('/admin/tasks')
+      const meeting = await api.post('/meetings', { title, transcript, aiProvider })
+      console.log('Meeting created:', meeting)
+      setMeetingId(meeting.id)
+      setLoading(false)
+      setProcessing(true)
+      
+      // Start timer
+      const startTime = Date.now()
+      const timerInterval = setInterval(() => {
+        setProcessingTime(Math.floor((Date.now() - startTime) / 1000))
+      }, 1000)
+      
+      // Poll for meeting completion
+      pollMeetingStatus(meeting.id, timerInterval)
     } catch (err) {
       setError(err.message)
-    } finally {
       setLoading(false)
     }
+  }
+
+  const pollMeetingStatus = async (id, timerInterval) => {
+    const maxAttempts = 90 // 90 attempts = 3 minutes max (AI processing can take time)
+    let attempts = 0
+
+    const checkStatus = async () => {
+      try {
+        attempts++
+        console.log(`Polling attempt ${attempts}/${maxAttempts} for meeting ${id}`)
+        const meeting = await api.get(`/meetings/${id}`)
+        console.log('Meeting status:', meeting.processing_status)
+
+        if (meeting.processing_status === 'completed') {
+          console.log('✅ Meeting processing completed!')
+          clearInterval(timerInterval)
+          setProcessing(false)
+          setCompleted(true)
+          // Navigate to tasks page after showing success message
+          setTimeout(() => {
+            navigate('/admin/tasks')
+          }, 2000)
+        } else if (meeting.processing_status === 'failed') {
+          console.log('❌ Meeting processing failed')
+          clearInterval(timerInterval)
+          setProcessing(false)
+          setError('Failed to process meeting. Please try again.')
+        } else if (attempts < maxAttempts) {
+          // Still processing, check again in 2 seconds
+          console.log('⏳ Still processing, checking again in 2s...')
+          setTimeout(checkStatus, 2000)
+        } else {
+          console.log('⏱️ Polling timeout reached')
+          clearInterval(timerInterval)
+          setProcessing(false)
+          setError('Processing is taking longer than expected. Please check the tasks page.')
+        }
+      } catch (err) {
+        console.error('Poll error:', err)
+        if (attempts < maxAttempts) {
+          setTimeout(checkStatus, 2000)
+        } else {
+          clearInterval(timerInterval)
+          setProcessing(false)
+          setError('Failed to check processing status.')
+        }
+      }
+    }
+
+    checkStatus()
   }
 
   const handleFileUpload = (e) => {
@@ -171,16 +237,59 @@ export default function UploadMeeting() {
 
               <button
                 type="submit"
-                disabled={loading || !transcript.trim()}
+                disabled={loading || processing || completed || !transcript.trim()}
                 className="w-full bg-gray-900 text-white font-bold py-5 rounded-2xl text-[16px] shadow-[0_4px_14px_0_rgb(0,0,0,0.15)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.2)] hover:bg-gray-800 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none transition-all duration-300"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-3">
                     <div className="w-5 h-5 border-[3px] border-white/20 border-t-white rounded-full animate-spin"></div>
-                    Executing AI Framework...
+                    Submitting...
+                  </span>
+                ) : processing ? (
+                  <span className="flex items-center justify-center gap-3">
+                    <div className="w-5 h-5 border-[3px] border-white/20 border-t-white rounded-full animate-spin"></div>
+                    Processing with AI...
+                  </span>
+                ) : completed ? (
+                  <span className="flex items-center justify-center gap-3">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Completed!
                   </span>
                 ) : 'Extract Action Items'}
               </button>
+
+              {processing && (
+                <div className="mt-6 bg-indigo-50 border border-indigo-100 rounded-2xl p-6 text-center">
+                  <div className="flex items-center justify-center gap-3 mb-3">
+                    <div className="w-8 h-8 border-[3px] border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                  </div>
+                  <p className="text-indigo-900 font-bold text-[15px] mb-1">AI Agents Working...</p>
+                  <p className="text-indigo-600 text-[13px] font-medium mb-2">
+                    Analyzing transcript, extracting tasks, and assigning to team members
+                  </p>
+                  <p className="text-indigo-500 text-[12px] font-mono">
+                    {processingTime}s elapsed
+                  </p>
+                </div>
+              )}
+
+              {completed && (
+                <div className="mt-6 bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
+                  <div className="flex items-center justify-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-green-900 font-bold text-[16px] mb-1">Tasks Assigned Successfully!</p>
+                  <p className="text-green-700 text-[13px] font-medium">
+                    Redirecting to tasks page...
+                  </p>
+                </div>
+              )}
             </form>
           </div>
 
