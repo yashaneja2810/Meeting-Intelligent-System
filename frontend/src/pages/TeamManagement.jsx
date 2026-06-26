@@ -28,9 +28,10 @@ export default function TeamManagement() {
   const loadTeam = async () => {
     try {
       const data = await api.get('/team')
-      setTeamMembers(data)
+      setTeamMembers(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Load team error:', err)
+      setTeamMembers([]) // Set empty array on error
     } finally {
       setLoading(false)
     }

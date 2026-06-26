@@ -1,4 +1,5 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
@@ -11,12 +12,15 @@ import auditRoutes from './routes/audit.js';
 import inviteRoutes from './routes/invites.js';
 import myTasksRoutes from './routes/myTasks.js';
 import completionRequestRoutes from './routes/completionRequests.js';
+import liveMeetingRoutes from './routes/liveMeetings.js';
 import { checkDeadlines } from './services/monitoring.js';
 import { startKeepAlive } from './services/ai.js';
+import { initializeSocketIO } from './services/socketServer.js';
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -34,6 +38,7 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/my-tasks', myTasksRoutes);
 app.use('/api/completion-requests', completionRequestRoutes);
+app.use('/api/live-meetings', liveMeetingRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -62,8 +67,12 @@ cron.schedule('0 * * * *', async () => {
 // Start AI service keep-alive pings
 startKeepAlive();
 
-app.listen(PORT, () => {
+// Initialize Socket.IO for live meetings
+initializeSocketIO(httpServer);
+
+httpServer.listen(PORT, () => {
   console.log(`🚀 Backend server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🤖 AI Service URL: ${process.env.AI_SERVICE_URL}`);
+  console.log(`🎥 Socket.IO enabled for live meetings`);
 });

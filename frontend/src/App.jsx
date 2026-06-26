@@ -19,6 +19,12 @@ import EmployeeDashboard from '@/pages/employee/EmployeeDashboard'
 import MyTasks from '@/pages/MyTasks'
 import Organizations from '@/pages/employee/Organizations'
 
+// Live Meeting Pages
+import LiveMeetings from '@/pages/LiveMeetings'
+import CreateLiveMeeting from '@/pages/CreateLiveMeeting'
+import LiveMeetingRoom from '@/pages/LiveMeetingRoom'
+import MeetingResults from '@/pages/MeetingResults'
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuthStore()
   
@@ -57,6 +63,12 @@ function App() {
         <Route path="/employee/tasks" element={<ProtectedRoute><MyTasks /></ProtectedRoute>} />
         <Route path="/employee/organizations" element={<ProtectedRoute><Organizations /></ProtectedRoute>} />
         <Route path="/employee/invites" element={<ProtectedRoute><Invites /></ProtectedRoute>} />
+        
+        {/* Live Meeting Routes */}
+        <Route path="/live-meetings" element={<ProtectedRoute><LiveMeetings /></ProtectedRoute>} />
+        <Route path="/live-meetings/create" element={<ProtectedRoute><CreateLiveMeeting /></ProtectedRoute>} />
+        <Route path="/live-meetings/:id" element={<ProtectedRoute><LiveMeetingRoom /></ProtectedRoute>} />
+        <Route path="/live-meetings/:id/results" element={<ProtectedRoute><MeetingResults /></ProtectedRoute>} />
       </Routes>
     </Router>
   )

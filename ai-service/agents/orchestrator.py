@@ -112,3 +112,101 @@ class AgentOrchestrator:
             "tasks": tasks,
             "audit_logs": audit_logs
         }
+    
+    async def generate_mom(
+        self,
+        transcript: str,
+        meeting_title: str,
+        participants: List[str],
+        ai_provider: str = "gemini"
+    ) -> Dict[str, Any]:
+        """
+        Generate Minutes of Meeting (MOM) from transcript using AI.
+        """
+        # Select the appropriate model
+        if ai_provider == "groq":
+            if not self.groq_client:
+                raise ValueError("Groq API key not configured")
+            model = self.groq_client
+        else:  # gemini
+            if not self.gemini_model:
+                raise ValueError("Gemini API key not configured")
+            model = self.gemini_model
+        
+        prompt = f"""
+You are a professional meeting secretary tasked with generating comprehensive Minutes of Meeting (MOM).
+
+Meeting Title: {meeting_title}
+Participants: {', '.join(participants)}
+
+Transcript:
+{transcript}
+
+Generate a structured MOM in JSON format with the following fields:
+1. summary: A concise 2-3 paragraph summary of the meeting (max 500 words)
+2. key_points: Array of 5-10 key discussion points from the meeting
+3. decisions: Array of concrete decisions made during the meeting
+4. action_items: Array of action items identified (without assignments)
+5. sentiment: Overall meeting sentiment (positive/neutral/negative)
+6. topics: Array of 3-7 main topics discussed
+
+Guidelines:
+- Be professional and objective
+- Focus on concrete information from the transcript
+- Identify clear action items vs general discussion
+- Determine sentiment based on tone and outcomes
+- Extract key topics without duplication
+
+Return ONLY valid JSON without any markdown formatting or code blocks.
+"""
+        
+        try:
+            if ai_provider == "groq":
+                # Groq API call
+                response = model.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[
+                        {"role": "system", "content": "You are a professional meeting secretary. Always return valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=2000,
+                    response_format={"type": "json_object"}
+                )
+                result_text = response.choices[0].message.content
+            else:
+                # Gemini API call
+                response = model.generate_content(
+                    prompt,
+                    generation_config={
+                        "temperature": 0.3,
+                        "max_output_tokens": 2000,
+                        "response_mime_type": "application/json"
+                    }
+                )
+                result_text = response.text
+            
+            # Parse JSON response
+            import json
+            result = json.loads(result_text)
+            
+            # Ensure all required fields exist
+            return {
+                "summary": result.get("summary", "Meeting summary not available"),
+                "key_points": result.get("key_points", []),
+                "decisions": result.get("decisions", []),
+                "action_items": result.get("action_items", []),
+                "sentiment": result.get("sentiment", "neutral"),
+                "topics": result.get("topics", [])
+            }
+            
+        except Exception as e:
+            # Return fallback MOM if AI fails
+            return {
+                "summary": f"Meeting titled '{meeting_title}' was conducted with {len(participants)} participants. Full transcript is available for review.",
+                "key_points": ["Please review the full transcript for details"],
+                "decisions": [],
+                "action_items": ["Review transcript and identify action items manually"],
+                "sentiment": "neutral",
+                "topics": ["General discussion"]
+            }

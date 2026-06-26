@@ -107,6 +107,22 @@ class ProcessMeetingResponse(BaseModel):
     audit_logs: List[Dict[str, Any]]
 
 
+class GenerateMOMRequest(BaseModel):
+    transcript: str
+    meetingTitle: str
+    participants: List[str]
+    ai_provider: str = "gemini"
+
+
+class GenerateMOMResponse(BaseModel):
+    summary: str
+    key_points: List[str]
+    decisions: List[str]
+    action_items: List[str]
+    sentiment: str
+    topics: List[str]
+
+
 @app.get("/")
 async def root():
     return {
@@ -179,6 +195,41 @@ async def process_meeting(request: ProcessMeetingRequest):
         )
     except Exception as e:
         logger.error(f"Error processing meeting: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/generate-mom", response_model=GenerateMOMResponse)
+async def generate_mom(request: GenerateMOMRequest):
+    try:
+        if not orchestrator:
+            logger.error("Orchestrator not initialized")
+            raise HTTPException(
+                status_code=500,
+                detail="AI service not properly initialized. Check API keys."
+            )
+        
+        # Validate AI provider
+        if request.ai_provider not in ["gemini", "groq"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid AI provider. Must be 'gemini' or 'groq'."
+            )
+        
+        logger.info(f"Generating MOM for meeting: {request.meetingTitle}")
+        
+        # Use AI to generate structured MOM
+        result = await orchestrator.generate_mom(
+            transcript=request.transcript,
+            meeting_title=request.meetingTitle,
+            participants=request.participants,
+            ai_provider=request.ai_provider
+        )
+        
+        logger.info(f"MOM generated successfully")
+        
+        return GenerateMOMResponse(**result)
+    except Exception as e:
+        logger.error(f"Error generating MOM: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

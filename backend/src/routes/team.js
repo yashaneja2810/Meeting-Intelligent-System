@@ -29,7 +29,7 @@ router.post('/', async (req, res) => {
     const { data, error } = await supabaseAdmin
       .from('team_members')
       .insert({
-        user_id: req.user.id,
+        user_id: req.user.id, // Admin's ID who created this member
         name,
         email,
         role,

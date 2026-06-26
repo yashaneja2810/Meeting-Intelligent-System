@@ -11,6 +11,17 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Polyfills for simple-peer compatibility
+      window.process = window.process || { env: {} };
+      window.setImmediate = window.setImmediate || function(fn) {
+        return setTimeout(fn, 0);
+      };
+      window.process.nextTick = window.process.nextTick || function(fn) {
+        return window.setImmediate(fn);
+      };
+      window.global = window.global || window;
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
