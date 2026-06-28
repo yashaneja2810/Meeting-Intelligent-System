@@ -623,7 +623,7 @@ async function triggerTaskExtraction(meeting, transcript, userId) {
       user_id: userId,
       transcript,
       team_members: teamMembers || [],
-      ai_provider: 'gemini'
+      ai_provider: 'groq'
     }, {
       timeout: 120000
     });

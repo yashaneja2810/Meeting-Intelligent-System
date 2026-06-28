@@ -112,7 +112,7 @@ export default function Onboarding() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
           </motion.div>
-          <h1 className="text-[36px] font-extrabold text-gray-900 tracking-tight mb-3">Welcome to AutoExec</h1>
+          <h1 className="text-[36px] font-extrabold text-gray-100 tracking-tight mb-3">Welcome to AutoExec</h1>
           <p className="text-gray-500 font-medium text-[16px]">Let's set up your workspace for intelligent automation.</p>
         </div>
 
@@ -123,7 +123,7 @@ export default function Onboarding() {
               <div key={num} className="flex flex-col items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-black shadow-sm transition-all duration-300 ${step > num ? 'bg-gray-900 text-white scale-90' :
                   step === num ? 'bg-gray-900 text-white ring-4 ring-indigo-500/20 scale-110 shadow-[0_4px_14px_0_rgb(0,0,0,0.15)]' :
-                    'bg-white text-gray-400 border border-gray-200'
+                    'bg-[#111111] text-gray-400 border border-[#333333]'
                   }`}>
                   {step > num ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
@@ -132,7 +132,7 @@ export default function Onboarding() {
               </div>
             ))}
             {/* Connecting lines */}
-            <div className="absolute top-4 left-0 right-0 h-[2px] bg-gray-200 -z-10 mx-6 translate-y-[-1px]">
+            <div className="absolute top-4 left-0 right-0 h-[2px] bg-[#222222] -z-10 mx-6 translate-y-[-1px]">
               <div
                 className="h-full bg-gray-900 transition-all duration-500 ease-in-out"
                 style={{ width: `${((step - 1) / 2) * 100}%` }}
@@ -140,14 +140,14 @@ export default function Onboarding() {
             </div>
           </div>
           <div className="flex justify-between max-w-[340px] mx-auto mt-4 px-2">
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${step >= 1 ? 'text-gray-900' : 'text-gray-400'}`}>Profile</span>
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${step >= 2 ? 'text-gray-900' : 'text-gray-400'}`}>Team</span>
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${step >= 3 ? 'text-gray-900' : 'text-gray-400'}`}>Settings</span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${step >= 1 ? 'text-gray-100' : 'text-gray-400'}`}>Profile</span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${step >= 2 ? 'text-gray-100' : 'text-gray-400'}`}>Team</span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${step >= 3 ? 'text-gray-100' : 'text-gray-400'}`}>Settings</span>
           </div>
         </div>
 
         {/* Main Content Card */}
-        <div className="bg-white rounded-[2rem] p-8 md:p-12 shadow-[0_8px_30px_rgba(0,0,0,0.04)] ring-1 ring-gray-200/60 flex-1 relative overflow-hidden flex flex-col">
+        <div className="bg-[#111111] rounded-[2rem] p-8 md:p-12 shadow-[0_8px_30px_rgba(0,0,0,0.04)] ring-1 ring-gray-200/60 flex-1 relative overflow-hidden flex flex-col">
           <AnimatePresence mode="wait">
 
             {/* Step 1: Profile */}
@@ -161,7 +161,7 @@ export default function Onboarding() {
                 className="space-y-8 flex-1"
               >
                 <div>
-                  <h2 className="text-[24px] font-extrabold text-gray-900 tracking-tight mb-2">Profile Information</h2>
+                  <h2 className="text-[24px] font-extrabold text-gray-100 tracking-tight mb-2">Profile Information</h2>
                   <p className="text-gray-500 font-medium">Tell us a bit about yourself and your organization.</p>
                 </div>
 
@@ -172,7 +172,7 @@ export default function Onboarding() {
                       type="text"
                       value={profileData.display_name}
                       onChange={(e) => setProfileData({ ...profileData, display_name: e.target.value })}
-                      className="w-full bg-[#FAFAFA] border border-gray-200/80 rounded-2xl text-[15px] font-semibold text-gray-900 px-5 py-4 placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 hover:border-gray-300 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]"
+                      className="w-full bg-[#FAFAFA] border border-[#333333]/80 rounded-2xl text-[15px] font-semibold text-gray-100 px-5 py-4 placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 hover:border-[#444444] transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]"
                       placeholder="John Doe"
                       required
                     />
@@ -183,7 +183,7 @@ export default function Onboarding() {
                       type="text"
                       value={profileData.company_name}
                       onChange={(e) => setProfileData({ ...profileData, company_name: e.target.value })}
-                      className="w-full bg-[#FAFAFA] border border-gray-200/80 rounded-2xl text-[15px] font-semibold text-gray-900 px-5 py-4 placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 hover:border-gray-300 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]"
+                      className="w-full bg-[#FAFAFA] border border-[#333333]/80 rounded-2xl text-[15px] font-semibold text-gray-100 px-5 py-4 placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 hover:border-[#444444] transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]"
                       placeholder="Acme Inc."
                     />
                   </div>
@@ -202,7 +202,7 @@ export default function Onboarding() {
                 className="space-y-8 flex-1 flex flex-col"
               >
                 <div>
-                  <h2 className="text-[24px] font-extrabold text-gray-900 tracking-tight mb-2">Invite Your Team</h2>
+                  <h2 className="text-[24px] font-extrabold text-gray-100 tracking-tight mb-2">Invite Your Team</h2>
                   <p className="text-gray-500 font-medium">Add members so AutoExec can start assigning tasks. (Optional)</p>
                 </div>
 
@@ -214,17 +214,17 @@ export default function Onboarding() {
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         key={index}
-                        className="bg-[#FAFAFA] border border-gray-200/80 rounded-3xl p-6 space-y-4 relative group shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]"
+                        className="bg-[#FAFAFA] border border-[#333333]/80 rounded-3xl p-6 space-y-4 relative group shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]"
                       >
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-[14px] font-bold text-gray-900 tracking-tight flex items-center gap-3">
+                          <span className="text-[14px] font-bold text-gray-100 tracking-tight flex items-center gap-3">
                             <span className="w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-[11px] font-black">{index + 1}</span>
                             Team Member
                           </span>
                           {teamMembers.length > 1 && (
                             <button
                               onClick={() => removeTeamMember(index)}
-                              className="w-8 h-8 rounded-full flex items-center justify-center bg-white text-rose-500 shadow-sm border border-gray-200 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-colors"
+                              className="w-8 h-8 rounded-full flex items-center justify-center bg-[#111111] text-rose-500 shadow-sm border border-[#333333] hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-colors"
                               title="Remove member"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -237,14 +237,14 @@ export default function Onboarding() {
                             placeholder="Full Name"
                             value={member.name}
                             onChange={(e) => updateTeamMember(index, 'name', e.target.value)}
-                            className="w-full bg-white border border-gray-200/80 rounded-xl text-[14px] font-semibold text-gray-900 px-4 py-3 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                            className="w-full bg-[#111111] border border-[#333333]/80 rounded-xl text-[14px] font-semibold text-gray-100 px-4 py-3 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                           />
                           <input
                             type="email"
                             placeholder="Email Address"
                             value={member.email}
                             onChange={(e) => updateTeamMember(index, 'email', e.target.value)}
-                            className="w-full bg-white border border-gray-200/80 rounded-xl text-[14px] font-semibold text-gray-900 px-4 py-3 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                            className="w-full bg-[#111111] border border-[#333333]/80 rounded-xl text-[14px] font-semibold text-gray-100 px-4 py-3 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                           />
                         </div>
                         <input
@@ -252,14 +252,14 @@ export default function Onboarding() {
                           placeholder="Role (e.g., Backend Developer)"
                           value={member.role}
                           onChange={(e) => updateTeamMember(index, 'role', e.target.value)}
-                          className="w-full bg-white border border-gray-200/80 rounded-xl text-[14px] font-semibold text-gray-900 px-4 py-3 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                          className="w-full bg-[#111111] border border-[#333333]/80 rounded-xl text-[14px] font-semibold text-gray-100 px-4 py-3 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                         />
                         <input
                           type="text"
                           placeholder="Skills (comma-separated for AI matching)"
                           value={member.skills}
                           onChange={(e) => updateTeamMember(index, 'skills', e.target.value)}
-                          className="w-full bg-white border border-gray-200/80 rounded-xl text-[14px] font-semibold text-gray-900 px-4 py-3 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                          className="w-full bg-[#111111] border border-[#333333]/80 rounded-xl text-[14px] font-semibold text-gray-100 px-4 py-3 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                         />
                       </motion.div>
                     ))}
@@ -267,7 +267,7 @@ export default function Onboarding() {
                 </div>
 
                 <div className="pt-2">
-                  <button onClick={addTeamMember} className="w-full py-4 border-dashed border-2 border-gray-300 rounded-2xl hover:bg-gray-50 text-gray-600 hover:text-gray-900 hover:border-gray-400 flex items-center justify-center gap-2 text-[14px] font-bold transition-all">
+                  <button onClick={addTeamMember} className="w-full py-4 border-dashed border-2 border-[#444444] rounded-2xl hover:bg-[#0A0A0A] text-gray-400 hover:text-gray-100 hover:border-gray-400 flex items-center justify-center gap-2 text-[14px] font-bold transition-all">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                     Add Another Member
                   </button>
@@ -286,14 +286,14 @@ export default function Onboarding() {
                 className="space-y-8 flex-1"
               >
                 <div>
-                  <h2 className="text-[24px] font-extrabold text-gray-900 tracking-tight mb-2">Notification Preferences</h2>
+                  <h2 className="text-[24px] font-extrabold text-gray-100 tracking-tight mb-2">Notification Preferences</h2>
                   <p className="text-gray-500 font-medium">Configure how AutoExec handles task deadlines and escalations.</p>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="bg-[#FAFAFA] p-6 rounded-3xl border border-gray-200/80 flex items-center justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)] transition-colors hover:border-gray-300">
+                  <div className="bg-[#FAFAFA] p-6 rounded-3xl border border-[#333333]/80 flex items-center justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)] transition-colors hover:border-[#444444]">
                     <div>
-                      <h4 className="font-bold text-gray-900 text-[15px] tracking-tight mb-1">First Reminder</h4>
+                      <h4 className="font-bold text-gray-100 text-[15px] tracking-tight mb-1">First Reminder</h4>
                       <p className="text-[13px] text-gray-500 font-medium">Hours before deadline</p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -304,16 +304,16 @@ export default function Onboarding() {
                           ...preferences,
                           escalation_rules: { ...preferences.escalation_rules, first_reminder: parseInt(e.target.value) }
                         })}
-                        className="bg-white border border-gray-200 rounded-xl py-2 w-20 text-center font-bold text-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm"
+                        className="bg-[#111111] border border-[#333333] rounded-xl py-2 w-20 text-center font-bold text-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm"
                         min="1"
                       />
                       <span className="text-[13px] font-bold text-gray-400 uppercase tracking-widest">hrs</span>
                     </div>
                   </div>
 
-                  <div className="bg-[#FAFAFA] p-6 rounded-3xl border border-gray-200/80 flex items-center justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)] transition-colors hover:border-gray-300">
+                  <div className="bg-[#FAFAFA] p-6 rounded-3xl border border-[#333333]/80 flex items-center justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)] transition-colors hover:border-[#444444]">
                     <div>
-                      <h4 className="font-bold text-gray-900 text-[15px] tracking-tight mb-1">Second Reminder</h4>
+                      <h4 className="font-bold text-gray-100 text-[15px] tracking-tight mb-1">Second Reminder</h4>
                       <p className="text-[13px] text-gray-500 font-medium">Hours before deadline</p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -324,7 +324,7 @@ export default function Onboarding() {
                           ...preferences,
                           escalation_rules: { ...preferences.escalation_rules, second_reminder: parseInt(e.target.value) }
                         })}
-                        className="bg-white border border-gray-200 rounded-xl py-2 w-20 text-center font-bold text-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm"
+                        className="bg-[#111111] border border-[#333333] rounded-xl py-2 w-20 text-center font-bold text-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm"
                         min="1"
                       />
                       <span className="text-[13px] font-bold text-gray-400 uppercase tracking-widest">hrs</span>
@@ -344,7 +344,7 @@ export default function Onboarding() {
                           ...preferences,
                           escalation_rules: { ...preferences.escalation_rules, escalate_after: parseInt(e.target.value) }
                         })}
-                        className="bg-white border border-rose-200 text-rose-600 rounded-xl py-2 w-20 text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 shadow-sm"
+                        className="bg-[#111111] border border-rose-200 text-rose-600 rounded-xl py-2 w-20 text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 shadow-sm"
                         min="1"
                       />
                       <span className="text-[13px] font-bold text-rose-400 uppercase tracking-widest">hrs</span>
@@ -360,7 +360,7 @@ export default function Onboarding() {
             {step > 1 ? (
               <button
                 onClick={() => setStep(step - 1)}
-                className="text-gray-500 hover:text-gray-900 font-bold text-[14px] flex items-center gap-2 transition-colors py-2 px-4 -ml-4"
+                className="text-gray-500 hover:text-gray-100 font-bold text-[14px] flex items-center gap-2 transition-colors py-2 px-4 -ml-4"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                 Back element

@@ -28,11 +28,11 @@ export default function AlertDialog({
     },
     info: {
       icon: (
-        <svg className="w-8 h-8 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+        <svg className="w-8 h-8 text-gray-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      iconBg: 'bg-gray-50 border-gray-200'
+      iconBg: 'bg-[#0A0A0A] border-[#333333]'
     }
   }
 
@@ -52,7 +52,7 @@ export default function AlertDialog({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white max-w-md w-full p-8 rounded-2xl shadow-2xl border border-gray-100"
+          className="bg-[#111111] max-w-md w-full p-8 rounded-2xl shadow-2xl border border-[#222222]"
         >
           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 border ${style.iconBg}`}>
             {style.icon}
@@ -61,7 +61,7 @@ export default function AlertDialog({
           <h3 className="text-2xl font-bold text-black mb-3 tracking-tight">
             {title}
           </h3>
-          <p className="text-gray-600 font-medium mb-8 leading-relaxed">
+          <p className="text-gray-400 font-medium mb-8 leading-relaxed">
             {message}
           </p>
 

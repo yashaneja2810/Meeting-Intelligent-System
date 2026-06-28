@@ -33,7 +33,7 @@ export default function InviteNotification() {
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
         className="fixed top-6 right-6 z-[100] max-w-sm w-full"
       >
-        <div className="surface p-5 shadow-2xl shadow-black/10 ring-1 ring-black/5 border-transparent flex flex-col gap-3">
+        <div className="surface p-5 shadow-2xl shadow-black/10 ring-1 ring-white/5 border-transparent flex flex-col gap-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center text-lg shadow-sm">
@@ -54,7 +54,7 @@ export default function InviteNotification() {
             </button>
           </div>
 
-          <p className="text-sm text-gray-600 font-medium">
+          <p className="text-sm text-gray-400 font-medium">
             You have <span className="font-bold text-black">{invites.length} pending</span> team invitation{invites.length > 1 ? 's' : ''}. Proceed to your dashboard to respond.
           </p>
 

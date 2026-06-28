@@ -1,28 +1,62 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// SVG Icons
+const PlusIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+const XIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
 export default function PollPanel({ polls, currentUser, isHost, onCreatePoll, onVotePoll, onClosePoll }) {
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   return (
-    <div className="h-full flex flex-col bg-gray-900">
+    <div className="h-full flex flex-col" style={{ background: '#0d0d0d' }}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-        <h3 className="text-white font-semibold">
-          Polls ({polls.length})
-        </h3>
+      <div className="p-4 border-b border-white/5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h3 className="text-white font-semibold text-sm">Polls</h3>
+          <span className="text-xs text-white/40 bg-white/5 px-2 py-0.5 rounded-full font-medium">
+            {polls.length}
+          </span>
+        </div>
         {isHost && (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className="text-blue-400 hover:text-blue-300 text-sm"
+            className="flex items-center gap-1.5 text-sm font-medium text-white/60 hover:text-white transition-colors px-2.5 py-1.5 rounded-lg hover:bg-white/5"
           >
-            {showCreateForm ? 'Cancel' : '+ New Poll'}
-          </button>
+            {showCreateForm ? (
+              <>
+                <XIcon />
+                <span>Cancel</span>
+              </>
+            ) : (
+              <>
+                <PlusIcon />
+                <span>New Poll</span>
+              </>
+            )}
+          </motion.button>
         )}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Create Poll Form */}
         <AnimatePresence>
           {showCreateForm && (
@@ -38,24 +72,30 @@ export default function PollPanel({ polls, currentUser, isHost, onCreatePoll, on
 
         {/* Polls List */}
         {polls.length === 0 && !showCreateForm ? (
-          <div className="text-center text-gray-500 py-8">
-            <p className="text-4xl mb-2">📊</p>
-            <p className="text-sm">No polls yet</p>
+          <div className="text-center py-12">
+            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+            </div>
+            <p className="text-white/30 text-sm">No polls yet</p>
             {isHost && (
-              <p className="text-xs mt-1">Create a poll to engage participants</p>
+              <p className="text-white/15 text-xs mt-1">Create a poll to engage participants</p>
             )}
           </div>
         ) : (
-          polls.map((poll) => (
-            <PollCard
-              key={poll.id}
-              poll={poll}
-              currentUser={currentUser}
-              isHost={isHost}
-              onVote={onVotePoll}
-              onClose={onClosePoll}
-            />
-          ))
+          <AnimatePresence initial={false}>
+            {polls.map((poll) => (
+              <PollCard
+                key={poll.id}
+                poll={poll}
+                currentUser={currentUser}
+                isHost={isHost}
+                onVote={onVotePoll}
+                onClose={onClosePoll}
+              />
+            ))}
+          </AnimatePresence>
         )}
       </div>
     </div>
@@ -101,105 +141,123 @@ function CreatePollForm({ onSubmit, onCancel }) {
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className="bg-gray-800 rounded-lg p-4"
+      transition={{ duration: 0.25 }}
+      className="overflow-hidden"
     >
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Question */}
-        <div>
-          <label className="text-white text-sm font-medium block mb-1">
-            Question
-          </label>
-          <input
-            type="text"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Enter your question..."
-            maxLength={500}
-            className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        {/* Options */}
-        <div>
-          <label className="text-white text-sm font-medium block mb-1">
-            Options
-          </label>
-          <div className="space-y-2">
-            {options.map((option, index) => (
-              <div key={index} className="flex gap-2">
-                <input
-                  type="text"
-                  value={option}
-                  onChange={(e) => handleOptionChange(index, e.target.value)}
-                  placeholder={`Option ${index + 1}`}
-                  maxLength={200}
-                  className="flex-1 bg-gray-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-                {options.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveOption(index)}
-                    className="text-red-400 hover:text-red-300 px-2"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
+      <div className="rounded-xl p-4" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Question */}
+          <div>
+            <label className="text-white/60 text-xs font-medium block mb-1.5 uppercase tracking-wider">
+              Question
+            </label>
+            <input
+              type="text"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="What would you like to ask?"
+              maxLength={500}
+              className="w-full rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all"
+              style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
+              required
+            />
           </div>
-          {options.length < 10 && (
+
+          {/* Options */}
+          <div>
+            <label className="text-white/60 text-xs font-medium block mb-1.5 uppercase tracking-wider">
+              Options
+            </label>
+            <div className="space-y-2">
+              {options.map((option, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={option}
+                    onChange={(e) => handleOptionChange(index, e.target.value)}
+                    placeholder={`Option ${index + 1}`}
+                    maxLength={200}
+                    className="flex-1 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all"
+                    style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
+                    required
+                  />
+                  {options.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveOption(index)}
+                      className="text-red-400/60 hover:text-red-400 px-2 transition-colors"
+                    >
+                      <XIcon />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {options.length < 10 && (
+              <button
+                type="button"
+                onClick={handleAddOption}
+                className="flex items-center gap-1.5 text-white/40 hover:text-white/60 text-xs mt-2 transition-colors"
+              >
+                <PlusIcon />
+                <span>Add option</span>
+              </button>
+            )}
+          </div>
+
+          {/* Settings */}
+          <div className="space-y-2 pt-1">
+            <label className="flex items-center gap-2 text-white/60 text-xs cursor-pointer group">
+              <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                allowMultiple ? 'bg-[#111111] border-white' : 'border-white/20 group-hover:border-white/40'
+              }`}>
+                {allowMultiple && <span className="text-black"><CheckIcon /></span>}
+              </div>
+              <input
+                type="checkbox"
+                checked={allowMultiple}
+                onChange={(e) => setAllowMultiple(e.target.checked)}
+                className="sr-only"
+              />
+              Allow multiple selections
+            </label>
+            <label className="flex items-center gap-2 text-white/60 text-xs cursor-pointer group">
+              <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                anonymous ? 'bg-[#111111] border-white' : 'border-white/20 group-hover:border-white/40'
+              }`}>
+                {anonymous && <span className="text-black"><CheckIcon /></span>}
+              </div>
+              <input
+                type="checkbox"
+                checked={anonymous}
+                onChange={(e) => setAnonymous(e.target.checked)}
+                className="sr-only"
+              />
+              Anonymous voting
+            </label>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-2">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={!isValid}
+              className="flex-1 bg-[#111111] text-black py-2.5 rounded-lg font-medium text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              Create Poll
+            </motion.button>
             <button
               type="button"
-              onClick={handleAddOption}
-              className="text-blue-400 hover:text-blue-300 text-sm mt-2"
+              onClick={onCancel}
+              className="px-4 py-2.5 text-white/50 hover:text-white/70 text-sm rounded-lg hover:bg-white/5 transition-all"
             >
-              + Add Option
+              Cancel
             </button>
-          )}
-        </div>
-
-        {/* Settings */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-white text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allowMultiple}
-              onChange={(e) => setAllowMultiple(e.target.checked)}
-              className="rounded"
-            />
-            Allow multiple selections
-          </label>
-          <label className="flex items-center gap-2 text-white text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={anonymous}
-              onChange={(e) => setAnonymous(e.target.checked)}
-              className="rounded"
-            />
-            Anonymous voting
-          </label>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2 pt-2">
-          <button
-            type="submit"
-            disabled={!isValid}
-            className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-          >
-            Create Poll
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 transition-colors text-sm"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
+          </div>
+        </form>
+      </div>
     </motion.div>
   );
 }
@@ -233,62 +291,65 @@ function PollCard({ poll, currentUser, isHost, onVote, onClose }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gray-800 rounded-lg p-4"
+      transition={{ duration: 0.25 }}
+      className="rounded-xl p-4"
+      style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}
     >
       {/* Question */}
       <div className="flex items-start justify-between mb-3">
-        <h4 className="text-white font-medium flex-1">{poll.question}</h4>
+        <h4 className="text-white font-medium text-sm flex-1 leading-snug">{poll.question}</h4>
         {!poll.is_active && (
-          <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
+          <span className="text-[10px] text-white/30 border border-white/10 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">
             Closed
           </span>
         )}
       </div>
 
       {/* Options */}
-      <div className="space-y-2 mb-3">
+      <div className="space-y-1.5 mb-3">
         {poll.options?.map((option) => {
           const percentage = totalVotes > 0 ? (option.vote_count / totalVotes * 100) : 0;
           const isSelected = selectedOptions.includes(option.id);
 
           return (
-            <div key={option.id} className="relative">
-              {/* Progress Bar Background */}
-              <div
-                className="absolute inset-0 bg-blue-600 opacity-20 rounded"
-                style={{ width: `${percentage}%` }}
+            <div
+              key={option.id}
+              onClick={() => canVote && handleOptionToggle(option.id)}
+              className={`relative rounded-lg overflow-hidden transition-all duration-200 ${
+                canVote ? 'cursor-pointer hover:bg-white/[0.03]' : ''
+              } ${isSelected ? 'ring-1 ring-white/30' : ''}`}
+              style={{ background: '#1a1a1a' }}
+            >
+              {/* Animated Progress Bar */}
+              <motion.div
+                className="absolute inset-0 rounded-lg"
+                initial={{ width: 0 }}
+                animate={{ width: `${percentage}%` }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+                style={{ background: 'rgba(255,255,255,0.05)' }}
               />
 
               {/* Option Content */}
-              <div
-                onClick={() => canVote && handleOptionToggle(option.id)}
-                className={`relative flex items-center justify-between p-3 rounded cursor-pointer transition-colors ${
-                  canVote
-                    ? isSelected
-                      ? 'bg-blue-600 bg-opacity-30 border-2 border-blue-500'
-                      : 'hover:bg-gray-700 border-2 border-transparent'
-                    : 'border-2 border-transparent'
-                }`}
-              >
-                <div className="flex items-center gap-3">
+              <div className="relative flex items-center justify-between p-3">
+                <div className="flex items-center gap-2.5">
                   {canVote && (
-                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                      isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-500'
+                    <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all flex-shrink-0 ${
+                      isSelected ? 'border-white bg-[#111111]' : 'border-white/20'
                     }`}>
-                      {isSelected && <span className="text-white text-xs">✓</span>}
+                      {isSelected && <span className="text-black"><CheckIcon /></span>}
                     </div>
                   )}
-                  <span className="text-white text-sm">{option.text}</span>
+                  <span className="text-white/80 text-sm">{option.text}</span>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-400 text-sm">
+                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                  <span className="text-white/40 text-xs font-medium">
                     {Math.round(percentage)}%
                   </span>
-                  <span className="text-gray-500 text-xs">
-                    {option.vote_count} {option.vote_count === 1 ? 'vote' : 'votes'}
+                  <span className="text-white/20 text-[10px]">
+                    {option.vote_count || 0}
                   </span>
                 </div>
               </div>
@@ -298,40 +359,45 @@ function PollCard({ poll, currentUser, isHost, onVote, onClose }) {
       </div>
 
       {/* Info */}
-      <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
-        <span>{totalVotes} total {totalVotes === 1 ? 'vote' : 'votes'}</span>
-        {poll.allow_multiple && (
-          <span>Multiple selections allowed</span>
-        )}
-        {poll.anonymous && (
-          <span>🔒 Anonymous</span>
-        )}
+      <div className="flex items-center justify-between text-[10px] text-white/25 mb-3">
+        <span>{totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}</span>
+        <div className="flex items-center gap-2">
+          {poll.allow_multiple && <span>Multiple allowed</span>}
+          {poll.anonymous && <span>🔒 Anonymous</span>}
+        </div>
       </div>
 
       {/* Actions */}
       <div className="flex gap-2">
         {canVote && (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleVote}
             disabled={selectedOptions.length === 0}
-            className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            className="flex-1 bg-[#111111] text-black py-2 rounded-lg text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             Vote
-          </button>
+          </motion.button>
         )}
 
         {hasVoted && poll.is_active && (
-          <div className="flex-1 bg-green-600 text-white py-2 rounded text-center text-sm font-medium">
-            ✓ Voted
-          </div>
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500/10 text-emerald-400 py-2 rounded-lg text-sm font-medium"
+          >
+            <CheckIcon />
+            <span>Voted</span>
+          </motion.div>
         )}
 
         {isHost && poll.is_active && (
           <button
             onClick={() => onClose(poll.id)}
-            className="px-4 py-2 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 transition-colors text-sm"
+            className="px-4 py-2 text-white/40 hover:text-white/60 text-sm rounded-lg hover:bg-white/5 transition-all border border-white/5"
           >
-            Close Poll
+            Close
           </button>
         )}
       </div>

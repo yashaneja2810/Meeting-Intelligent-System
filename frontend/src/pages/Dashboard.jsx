@@ -52,7 +52,7 @@ export default function Dashboard() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="w-10 h-10 border-[3px] border-gray-100 border-t-black rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-[3px] border-[#222222] border-t-black rounded-full animate-spin"></div>
         </div>
       </DashboardLayout>
     )
@@ -118,7 +118,7 @@ export default function Dashboard() {
               className="surface p-8 cursor-pointer group hover:-translate-y-1 transition-transform duration-300 rounded-[2rem] border-transparent shadow-sm flex items-center gap-6"
               onClick={() => navigate('/dashboard/team')}
             >
-              <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100 group-hover:bg-black group-hover:text-white transition-colors duration-300 text-black shrink-0">
+              <div className="w-16 h-16 bg-[#0A0A0A] rounded-2xl flex items-center justify-center border border-[#222222] group-hover:bg-black group-hover:text-white transition-colors duration-300 text-black shrink-0">
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
@@ -132,7 +132,7 @@ export default function Dashboard() {
 
           {/* Recent Tasks */}
           <div className="lg:col-span-2 surface p-0 overflow-hidden shadow-sm border-transparent flex flex-col">
-            <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div className="p-8 border-b border-[#222222] flex justify-between items-center bg-[#0A0A0A]/50">
               <h2 className="text-2xl font-bold text-black tracking-tight">Recent Activity</h2>
               <button
                 onClick={() => navigate('/dashboard/tasks')}
@@ -147,7 +147,7 @@ export default function Dashboard() {
 
             {recentTasks.length === 0 ? (
               <div className="text-center py-20 px-8 flex-1 flex flex-col items-center justify-center">
-                <div className="w-20 h-20 bg-gray-50 rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-100">
+                <div className="w-20 h-20 bg-[#0A0A0A] rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-sm border border-[#222222]">
                   <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
@@ -172,8 +172,8 @@ export default function Dashboard() {
                     <div className="flex justify-between items-start mb-2 gap-4">
                       <h3 className="font-semibold text-black text-lg tracking-tight group-hover:text-primary-600 transition-colors line-clamp-1">{task.title}</h3>
                       <span className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase shadow-sm border ${task.status === 'completed' ? 'bg-black text-white border-black' :
-                          task.status === 'in_progress' ? 'bg-white text-black border-gray-200' :
-                            'bg-gray-50 text-gray-500 border-gray-200'
+                          task.status === 'in_progress' ? 'bg-[#111111] text-black border-[#333333]' :
+                            'bg-[#0A0A0A] text-gray-500 border-[#333333]'
                         }`}>
                         {task.status.replace('_', ' ')}
                       </span>
@@ -182,7 +182,7 @@ export default function Dashboard() {
                     <p className="text-sm text-gray-500 mb-4 line-clamp-1">{task.description}</p>
 
                     {task.assigned_member ? (
-                      <div className="mt-auto pt-3 border-t border-gray-100/50 flex items-center gap-2 text-sm text-gray-600 font-medium">
+                      <div className="mt-auto pt-3 border-t border-gray-100/50 flex items-center gap-2 text-sm text-gray-400 font-medium">
                         <div className="w-6 h-6 bg-black rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-sm">
                           {task.assigned_member.name[0].toUpperCase()}
                         </div>

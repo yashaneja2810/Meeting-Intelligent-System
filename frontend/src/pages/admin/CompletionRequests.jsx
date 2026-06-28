@@ -64,9 +64,9 @@ export default function CompletionRequests() {
     switch (priority) {
       case 'urgent': return 'bg-red-50 text-red-600 border-red-200'
       case 'high': return 'bg-orange-50 text-orange-600 border-orange-200'
-      case 'medium': return 'bg-gray-50 text-gray-600 border-gray-200'
-      case 'low': return 'bg-gray-50 text-gray-500 border-gray-200'
-      default: return 'bg-gray-50 text-gray-600 border-gray-200'
+      case 'medium': return 'bg-[#0A0A0A] text-gray-400 border-[#333333]'
+      case 'low': return 'bg-[#0A0A0A] text-gray-500 border-[#333333]'
+      default: return 'bg-[#0A0A0A] text-gray-400 border-[#333333]'
     }
   }
 
@@ -74,7 +74,7 @@ export default function CompletionRequests() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="w-10 h-10 border-[3px] border-gray-100 border-t-black rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-[3px] border-[#222222] border-t-black rounded-full animate-spin"></div>
         </div>
       </DashboardLayout>
     )
@@ -92,7 +92,7 @@ export default function CompletionRequests() {
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="input-field bg-white shadow-sm border-gray-200 py-3 pr-10 w-full md:w-64 cursor-pointer hover:bg-gray-50/50 transition-colors"
+            className="input-field bg-[#111111] shadow-sm border-[#333333] py-3 pr-10 w-full md:w-64 cursor-pointer hover:bg-[#0A0A0A]/50 transition-colors"
           >
             <option value="pending">Pending Review</option>
             <option value="approved">Approved</option>
@@ -103,7 +103,7 @@ export default function CompletionRequests() {
 
         {requests.length === 0 ? (
           <div className="surface flex flex-col items-center justify-center p-20 text-center border-transparent shadow-sm">
-            <div className="w-24 h-24 bg-gray-50 rounded-[28px] flex items-center justify-center mb-6 border border-gray-100">
+            <div className="w-24 h-24 bg-[#0A0A0A] rounded-[28px] flex items-center justify-center mb-6 border border-[#222222]">
               <span className="text-4xl">✅</span>
             </div>
             <p className="text-2xl font-bold text-black tracking-tight mb-2">
@@ -137,7 +137,7 @@ export default function CompletionRequests() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-bold text-xl text-black tracking-tight mb-2">{request.task.title}</h3>
-                          <p className="text-gray-600 text-sm mb-3 leading-relaxed">{request.task.description}</p>
+                          <p className="text-gray-400 text-sm mb-3 leading-relaxed">{request.task.description}</p>
                           
                           <div className="flex flex-wrap items-center gap-3 mb-4">
                             <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${getPriorityColor(request.task.priority)}`}>
@@ -155,9 +155,9 @@ export default function CompletionRequests() {
                           </div>
 
                           {request.completion_notes && (
-                            <div className="bg-gray-50/80 rounded-xl p-4 border border-gray-100">
+                            <div className="bg-gray-50/80 rounded-xl p-4 border border-[#222222]">
                               <h4 className="text-[11px] font-bold text-black uppercase tracking-wider mb-2">📝 Completion Notes</h4>
-                              <p className="text-sm text-gray-600 leading-relaxed font-medium">{request.completion_notes}</p>
+                              <p className="text-sm text-gray-400 leading-relaxed font-medium">{request.completion_notes}</p>
                             </div>
                           )}
 
@@ -177,7 +177,7 @@ export default function CompletionRequests() {
                                 </span>
                               </div>
                               {request.review_notes && (
-                                <p className="text-sm text-gray-600 mt-2">{request.review_notes}</p>
+                                <p className="text-sm text-gray-400 mt-2">{request.review_notes}</p>
                               )}
                             </div>
                           )}
@@ -248,7 +248,7 @@ export default function CompletionRequests() {
               </p>
 
               <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-gray-300 mb-2">
                   {reviewModal.action === 'approved' ? 'Approval Notes (Optional)' : 'Rejection Reason'}
                 </label>
                 <textarea
@@ -266,7 +266,7 @@ export default function CompletionRequests() {
                 <button
                   onClick={() => setReviewModal(null)}
                   disabled={submitting}
-                  className="flex-1 px-6 py-3.5 bg-gray-100 hover:bg-gray-200 text-black font-semibold rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                  className="flex-1 px-6 py-3.5 bg-[#1A1A1A] hover:bg-[#222222] text-black font-semibold rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                 >
                   Cancel
                 </button>

@@ -1,325 +1,320 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { api } from '../lib/api';
+import DashboardLayout from '@/components/DashboardLayout';
+
+const LANGS = [
+  { value: 'en', label: 'English' },
+  { value: 'hi', label: 'Hindi (हिंदी)' },
+  { value: 'hi-en', label: 'Hinglish (मिक्स)' },
+];
+
+const FEATURES = [
+  'HD video & audio for up to 5 participants',
+  'Screen sharing and presentation mode',
+  'Real-time chat (public and private)',
+  'Live AI transcription and subtitles',
+  'Reactions, polls and hand raising',
+  'AI-powered meeting summary & task extraction',
+];
 
 export default function CreateLiveMeeting() {
   const navigate = useNavigate();
-  
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    scheduledAt: '',
-    meetingType: 'instant',
-    transcriptLanguage: 'en',
-    participantIds: []
+    title: '', description: '', scheduledAt: '',
+    meetingType: 'instant', transcriptLanguage: 'en', participantIds: []
   });
-
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchTeamMembers();
-  }, []);
+  useEffect(() => { fetchTeamMembers(); }, []);
 
   const fetchTeamMembers = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await api.get('/team', {
-        headers: { Authorization: `Bearer ${session.access_token}` }
-      });
-      // Backend returns array directly
+      const response = await api.get('/team', { headers: { Authorization: `Bearer ${session.access_token}` } });
       const members = Array.isArray(response) ? response : [];
-      setTeamMembers(members.filter(tm => tm.is_active));
+      setTeamMembers(members.filter(m => m.is_active));
     } catch (error) {
-      console.error('Error fetching team members:', error);
       setError('Failed to load team members');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (formData.participantIds.length === 0) {
-      setError('Please select at least one team member');
-      return;
-    }
-
-    if (formData.participantIds.length > 5) {
-      setError('Maximum 5 participants allowed');
-      return;
-    }
-
+    if (formData.participantIds.length === 0) { setError('Please select at least one team member'); return; }
+    if (formData.participantIds.length > 5) { setError('Maximum 5 participants allowed'); return; }
     try {
-      setLoading(true);
-      setError('');
-
+      setLoading(true); setError('');
       const { data: { session } } = await supabase.auth.getSession();
-      
-      const response = await api.post('/live-meetings', {
-        ...formData,
-        scheduledAt: formData.scheduledAt || null
-      }, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
-      });
-
-      // Backend returns { meeting, participants } directly
+      const response = await api.post('/live-meetings', { ...formData, scheduledAt: formData.scheduledAt || null }, { headers: { Authorization: `Bearer ${session.access_token}` } });
       const meetingId = response.meeting?.id;
-
-      if (!meetingId) {
-        throw new Error('Meeting created but no ID returned');
-      }
-
-      // Navigate to meeting or meeting list
-      if (formData.meetingType === 'instant') {
-        navigate(`/live-meetings/${meetingId}`);
-      } else {
-        navigate('/live-meetings');
-      }
+      if (!meetingId) throw new Error('Meeting created but no ID returned');
+      if (formData.meetingType === 'instant') navigate(`/live-meetings/${meetingId}`);
+      else navigate('/live-meetings');
     } catch (error) {
-      console.error('Error creating meeting:', error);
       setError(error.response?.data?.error || 'Failed to create meeting');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleParticipantToggle = (memberId) => {
+  const toggleParticipant = (id) => {
     setFormData(prev => ({
       ...prev,
-      participantIds: prev.participantIds.includes(memberId)
-        ? prev.participantIds.filter(id => id !== memberId)
-        : [...prev.participantIds, memberId]
+      participantIds: prev.participantIds.includes(id)
+        ? prev.participantIds.filter(x => x !== id)
+        : [...prev.participantIds, id]
     }));
   };
 
+  const set = (k, v) => setFormData(prev => ({ ...prev, [k]: v }));
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto">
+    <DashboardLayout>
+      <div style={{ padding: '32px 36px', maxWidth: 900 }}>
+
         {/* Header */}
-        <div className="mb-8">
+        <div style={{ marginBottom: 28 }}>
           <button
             onClick={() => navigate('/live-meetings')}
-            className="text-gray-600 hover:text-gray-900 mb-4 flex items-center gap-2"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, padding: 0 }}
+            onMouseOver={e => e.currentTarget.style.color = 'var(--text-primary)'}
+            onMouseOut={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
           >
             ← Back to Meetings
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Create Live Meeting</h1>
-          <p className="text-gray-600 mt-2">
-            Set up an interactive video meeting with your team
-          </p>
+          <h1 className="page-title">Create Meeting</h1>
+          <p className="page-subtitle">Set up a video meeting with real-time AI transcription.</p>
         </div>
 
-        {/* Form */}
-        <motion.form
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          onSubmit={handleSubmit}
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6"
-        >
-          {/* Error Alert */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
 
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Meeting Title *
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="e.g., Weekly Team Sync"
-              maxLength={200}
-              required
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
-            />
-          </div>
+          {/* Form */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description (Optional)
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Add any details about the meeting..."
-              rows={3}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
-            />
-          </div>
+              {/* Error */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10, padding: '11px 14px', fontSize: 13, color: '#f87171', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}
+                  >
+                    <span>⚠</span> {error}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-          {/* Meeting Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Meeting Type
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, meetingType: 'instant', scheduledAt: '' })}
-                className={`p-4 rounded-lg border-2 transition-colors text-left ${
-                  formData.meetingType === 'instant'
-                    ? 'border-black bg-gray-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-2xl mb-2">⚡</div>
-                <div className="font-medium text-gray-900">Instant</div>
-                <div className="text-sm text-gray-600">Start now</div>
-              </button>
+              {/* Meeting Type */}
+              <div className="card" style={{ padding: 20 }}>
+                <label className="label">Meeting Type</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {[
+                    { key: 'instant', emoji: '⚡', label: 'Instant', desc: 'Start right now' },
+                    { key: 'scheduled', emoji: '📅', label: 'Scheduled', desc: 'Pick a time' },
+                  ].map(opt => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => set('meetingType', opt.key)}
+                      style={{
+                        padding: '14px 16px', borderRadius: 10, textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s ease',
+                        background: formData.meetingType === opt.key ? 'rgba(255,255,255,0.08)' : 'var(--bg-elevated)',
+                        border: `1px solid ${formData.meetingType === opt.key ? 'rgba(255,255,255,0.25)' : 'var(--border-default)'}`,
+                        boxShadow: formData.meetingType === opt.key ? '0 0 0 2px rgba(255,255,255,0.08)' : 'none'
+                      }}
+                    >
+                      <div style={{ fontSize: 20, marginBottom: 8 }}>{opt.emoji}</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{opt.label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, meetingType: 'scheduled' })}
-                className={`p-4 rounded-lg border-2 transition-colors text-left ${
-                  formData.meetingType === 'scheduled'
-                    ? 'border-black bg-gray-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-2xl mb-2">📅</div>
-                <div className="font-medium text-gray-900">Scheduled</div>
-                <div className="text-sm text-gray-600">Set a time</div>
-              </button>
-            </div>
-          </div>
+              {/* Title & Description */}
+              <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label className="label">Meeting Title <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <input
+                    className="input"
+                    type="text"
+                    value={formData.title}
+                    onChange={e => set('title', e.target.value)}
+                    placeholder="e.g., Weekly Team Sync"
+                    maxLength={200}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Description <span style={{ color: 'var(--text-tertiary)', fontSize: 10, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+                  <textarea
+                    className="input"
+                    value={formData.description}
+                    onChange={e => set('description', e.target.value)}
+                    placeholder="Add any details about the meeting..."
+                    rows={3}
+                    style={{ resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
+                  />
+                </div>
+              </div>
 
-          {/* Scheduled Time */}
-          {formData.meetingType === 'scheduled' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Schedule For
-              </label>
-              <input
-                type="datetime-local"
-                value={formData.scheduledAt}
-                onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
-                min={new Date().toISOString().slice(0, 16)}
-                required
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
-              />
-            </div>
-          )}
+              {/* Scheduled Time */}
+              <AnimatePresence>
+                {formData.meetingType === 'scheduled' && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="card" style={{ padding: 20, overflow: 'hidden' }}>
+                    <label className="label">Schedule For <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <input
+                      className="input"
+                      type="datetime-local"
+                      value={formData.scheduledAt}
+                      onChange={e => set('scheduledAt', e.target.value)}
+                      min={new Date().toISOString().slice(0, 16)}
+                      required
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-          {/* Transcript Language */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Transcription Language
-            </label>
-            <select
-              value={formData.transcriptLanguage}
-              onChange={(e) => setFormData({ ...formData, transcriptLanguage: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
-            >
-              <option value="en">English</option>
-              <option value="hi">Hindi (हिंदी)</option>
-              <option value="hi-en">Hinglish (मिक्स)</option>
-            </select>
-            <p className="text-sm text-gray-500 mt-1">
-              Select the primary language for real-time transcription
-            </p>
-          </div>
-
-          {/* Participants */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Invite Participants * (Max 5)
-            </label>
-            
-            {teamMembers.length === 0 ? (
-              <div className="border border-gray-300 rounded-lg p-8 text-center">
-                <p className="text-gray-500 mb-4">No team members available</p>
-                <button
-                  type="button"
-                  onClick={() => navigate('/admin/team')}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
+              {/* Language */}
+              <div className="card" style={{ padding: 20 }}>
+                <label className="label">Transcription Language</label>
+                <select
+                  className="input"
+                  value={formData.transcriptLanguage}
+                  onChange={e => set('transcriptLanguage', e.target.value)}
+                  style={{ colorScheme: 'dark' }}
                 >
-                  Add Team Members
+                  {LANGS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>Primary language for real-time AI transcription.</p>
+              </div>
+
+              {/* Participants */}
+              <div className="card" style={{ overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
+                      Invite Participants <span style={{ color: 'var(--danger)' }}>*</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Max 5 participants</div>
+                  </div>
+                  <span className="badge badge-default">{formData.participantIds.length} / 5</span>
+                </div>
+
+                {teamMembers.length === 0 ? (
+                  <div className="empty-state" style={{ padding: '40px 24px' }}>
+                    <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginBottom: 12 }}>No team members available</p>
+                    <button className="btn-secondary" type="button" onClick={() => navigate('/admin/team')} style={{ fontSize: 13 }}>Add Team Members</button>
+                  </div>
+                ) : (
+                  <div style={{ maxHeight: 320, overflowY: 'auto' }} className="custom-scrollbar">
+                    {teamMembers.map(member => {
+                      const isSelected = formData.participantIds.includes(member.id);
+                      const isDisabled = !isSelected && formData.participantIds.length >= 5;
+                      return (
+                        <label
+                          key={member.id}
+                          style={{
+                            display: 'flex', alignItems: 'center', padding: '12px 20px', cursor: isDisabled ? 'not-allowed' : 'pointer',
+                            borderBottom: '1px solid var(--border-subtle)', opacity: isDisabled ? 0.4 : 1,
+                            background: isSelected ? 'rgba(255,255,255,0.04)' : 'transparent',
+                            transition: 'background 0.15s ease'
+                          }}
+                          onMouseOver={e => !isDisabled && !isSelected && (e.currentTarget.style.background = 'var(--bg-elevated)')}
+                          onMouseOut={e => !isSelected && (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => !isDisabled && toggleParticipant(member.id)}
+                            disabled={isDisabled}
+                            style={{ display: 'none' }}
+                          />
+                          {/* Custom checkbox */}
+                          <div style={{
+                            width: 18, height: 18, borderRadius: 5, flexShrink: 0, marginRight: 12,
+                            background: isSelected ? '#ffffff' : 'transparent',
+                            border: `1.5px solid ${isSelected ? '#ffffff' : 'var(--border-strong)'}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.15s ease'
+                          }}>
+                            {isSelected && <svg style={{ width: 10, height: 10 }} fill="none" stroke="#0c0c0e" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                          </div>
+                          <div className="avatar" style={{ marginRight: 12 }}>
+                            {member.name?.[0]?.toUpperCase() || '?'}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{member.name}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.email}</div>
+                          </div>
+                          {member.role && <span className="chip" style={{ marginLeft: 8, flexShrink: 0 }}>{member.role}</span>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Submit */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="submit"
+                  disabled={loading || formData.participantIds.length === 0}
+                  className="btn-primary"
+                  style={{ flex: 1, padding: '12px', fontSize: 14.5, borderRadius: 11, justifyContent: 'center' }}
+                >
+                  {loading ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className="spinner" style={{ width: 16, height: 16 }} />
+                      {formData.meetingType === 'instant' ? 'Creating room...' : 'Scheduling...'}
+                    </span>
+                  ) : (
+                    formData.meetingType === 'instant' ? '⚡ Create & Join Now' : '📅 Schedule Meeting'
+                  )}
+                </button>
+                <button type="button" className="btn-secondary" onClick={() => navigate('/live-meetings')} style={{ padding: '12px 20px', fontSize: 14.5, borderRadius: 11 }}>
+                  Cancel
                 </button>
               </div>
-            ) : (
-              <div className="border border-gray-300 rounded-lg divide-y divide-gray-200 max-h-96 overflow-y-auto">
-                {teamMembers.map((member) => {
-                  const isSelected = formData.participantIds.includes(member.id);
-                  const isDisabled = !isSelected && formData.participantIds.length >= 5;
+            </form>
+          </motion.div>
 
-                  return (
-                    <label
-                      key={member.id}
-                      className={`flex items-center p-4 cursor-pointer transition-colors ${
-                        isDisabled
-                          ? 'opacity-50 cursor-not-allowed'
-                          : 'hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => !isDisabled && handleParticipantToggle(member.id)}
-                        disabled={isDisabled}
-                        className="w-4 h-4 rounded mr-3"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{member.name}</div>
-                        <div className="text-sm text-gray-600">{member.email}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {member.role} • {member.skills?.join(', ') || 'No skills'}
-                        </div>
-                      </div>
-                      {isSelected && (
-                        <span className="text-green-600 text-xl">✓</span>
-                      )}
-                    </label>
-                  );
-                })}
+          {/* Sidebar info */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="card" style={{ padding: 20 }}>
+              <h3 style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>What's included</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {FEATURES.map(f => (
+                  <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                    <svg style={{ width: 14, height: 14, color: 'var(--success)', flexShrink: 0, marginTop: 1 }} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    {f}
+                  </div>
+                ))}
               </div>
-            )}
-            
-            <p className="text-sm text-gray-500 mt-2">
-              {formData.participantIds.length} of 5 participants selected
-            </p>
-          </div>
+            </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              disabled={loading || formData.participantIds.length === 0}
-              className="flex-1 bg-black text-white py-3 rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-            >
-              {loading ? 'Creating...' : formData.meetingType === 'instant' ? 'Create & Join' : 'Schedule Meeting'}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/live-meetings')}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-            >
-              Cancel
-            </button>
+            <div className="card" style={{ padding: 20, background: 'var(--bg-elevated)', borderColor: 'var(--border-default)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Participant Limit</div>
+              <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 4 }}>5</div>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>max participants per meeting</div>
+              <div className="divider" style={{ margin: '14px 0' }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Selected</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: formData.participantIds.length > 0 ? 'var(--success)' : 'var(--text-tertiary)', letterSpacing: '-0.03em', lineHeight: 1 }}>
+                {formData.participantIds.length}
+              </div>
+            </div>
           </div>
-        </motion.form>
-
-        {/* Info Box */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="font-medium text-blue-900 mb-2">Meeting Features</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>✓ HD video and audio with up to 5 participants</li>
-            <li>✓ Screen sharing and presentation mode</li>
-            <li>✓ Real-time chat (public and private)</li>
-            <li>✓ Live transcription and subtitles</li>
-            <li>✓ Interactive polls and hand raising</li>
-            <li>✓ AI-powered meeting summary and task extraction</li>
-          </ul>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

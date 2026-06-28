@@ -46,8 +46,9 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
         
-        {/* Redirect /dashboard to admin dashboard */}
+        {/* Redirects */}
         <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="/tasks" element={<Navigate to="/admin/tasks" replace />} />
         
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />

@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { title, transcript, aiProvider = 'gemini' } = req.body;
+    const { title, transcript, aiProvider = 'groq' } = req.body;
 
     if (!transcript || transcript.trim().length === 0) {
       return res.status(400).json({ error: 'Transcript is required' });

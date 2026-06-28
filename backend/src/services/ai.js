@@ -32,7 +32,7 @@ async function pingAIService() {
   }
 }
 
-export async function processTranscript(meetingId, userId, transcript, aiProvider = 'gemini') {
+export async function processTranscript(meetingId, userId, transcript, aiProvider = 'groq') {
   try {
     // Update meeting status
     await supabaseAdmin

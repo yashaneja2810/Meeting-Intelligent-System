@@ -29,14 +29,15 @@ app.add_middleware(
 )
 
 # Check for required environment variables
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 BACKEND_API_URL = os.getenv("BACKEND_API_URL")  # For keep-alive pings
 
-if not GEMINI_API_KEY:
-    logger.warning("GEMINI_API_KEY environment variable is not set!")
-else:
-    logger.info("GEMINI_API_KEY is configured")
+# # GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# # if not GEMINI_API_KEY:
+# #     logger.warning("GEMINI_API_KEY environment variable is not set!")
+# # else:
+# #     logger.info("GEMINI_API_KEY is configured")
 
 if not GROQ_API_KEY:
     logger.warning("GROQ_API_KEY environment variable is not set!")
@@ -50,7 +51,6 @@ else:
 
 try:
     orchestrator = AgentOrchestrator(
-        gemini_api_key=GEMINI_API_KEY,
         groq_api_key=GROQ_API_KEY
     )
     logger.info("AgentOrchestrator initialized successfully")
@@ -99,7 +99,7 @@ class ProcessMeetingRequest(BaseModel):
     user_id: str
     transcript: str
     team_members: List[TeamMember]
-    ai_provider: str = "gemini"  # "gemini" or "groq"
+    ai_provider: str = "groq"  # Defaulting to groq
 
 
 class ProcessMeetingResponse(BaseModel):
@@ -111,7 +111,7 @@ class GenerateMOMRequest(BaseModel):
     transcript: str
     meetingTitle: str
     participants: List[str]
-    ai_provider: str = "gemini"
+    ai_provider: str = "groq"
 
 
 class GenerateMOMResponse(BaseModel):
@@ -137,7 +137,7 @@ async def health_check():
     health_status = {
         "status": "ok",
         "service": "AutoExec AI Service",
-        "gemini_api_configured": bool(GEMINI_API_KEY),
+        "gemini_api_configured": False,
         "groq_api_configured": bool(GROQ_API_KEY),
         "orchestrator_initialized": orchestrator is not None,
         "backend_keepalive_enabled": bool(BACKEND_API_URL)
@@ -156,19 +156,17 @@ async def process_meeting(request: ProcessMeetingRequest):
                 detail="AI service not properly initialized. Check API keys."
             )
         
-        # Validate AI provider
-        if request.ai_provider not in ["gemini", "groq"]:
+        if request.ai_provider not in ["groq"]:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid AI provider. Must be 'gemini' or 'groq'."
+                detail="Invalid AI provider. Must be 'groq'."
             )
-        
-        # Check if selected provider is configured
-        if request.ai_provider == "gemini" and not GEMINI_API_KEY:
-            raise HTTPException(
-                status_code=400,
-                detail="Gemini API key not configured."
-            )
+            
+        # if request.ai_provider == "gemini" and not GEMINI_API_KEY:
+        #     raise HTTPException(
+        #         status_code=400,
+        #         detail="Gemini API key not configured."
+        #     )
         if request.ai_provider == "groq" and not GROQ_API_KEY:
             raise HTTPException(
                 status_code=400,

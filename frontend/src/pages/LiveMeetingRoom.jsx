@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -11,6 +11,12 @@ import ChatPanel from '../components/meeting/ChatPanel';
 import ParticipantsPanel from '../components/meeting/ParticipantsPanel';
 import TranscriptPanel from '../components/meeting/TranscriptPanel';
 import PollPanel from '../components/meeting/PollPanel';
+
+// SVG Icons for sidebar tabs
+const ChatTabIcon = ({ active }) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? 'var(--info)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>;
+const PeopleTabIcon = ({ active }) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? 'var(--info)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
+const TranscriptTabIcon = ({ active }) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? 'var(--info)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>;
+const PollsTabIcon = ({ active }) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? 'var(--info)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>;
 
 export default function LiveMeetingRoom() {
   const { id: meetingId } = useParams();
@@ -29,15 +35,18 @@ export default function LiveMeetingRoom() {
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isHandRaised, setIsHandRaised] = useState(false);
-  const [showCaptions, setShowCaptions] = useState(true); // Show live captions
-  const [liveCaption, setLiveCaption] = useState(null); // Current caption to display
-  const [isTranscriptionEnabled, setIsTranscriptionEnabled] = useState(false); // Manual toggle for transcription
+  const [showCaptions, setShowCaptions] = useState(true);
+  const [liveCaption, setLiveCaption] = useState(null);
   
   // UI state
-  const [sidebarTab, setSidebarTab] = useState('chat'); // chat, participants, transcript, polls
+  const [sidebarTab, setSidebarTab] = useState('chat');
   const [showSidebar, setShowSidebar] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pinnedUserId, setPinnedUserId] = useState(null);
+  const [reactions, setReactions] = useState([]);
+  const [meetingDuration, setMeetingDuration] = useState(0);
+  const [layoutMode, setLayoutMode] = useState('grid');
   
   // Chat and features
   const [chatMessages, setChatMessages] = useState([]);
@@ -47,43 +56,55 @@ export default function LiveMeetingRoom() {
   // Refs
   const webrtcManagerRef = useRef(null);
   const localVideoRef = useRef(null);
-  const socketConnectedRef = useRef(false); // Track if socket is connected
-  const recognitionRef = useRef(null); // Speech recognition
-  const meetingStartTimeRef = useRef(null); // Track meeting start time for timestamps
+  const socketConnectedRef = useRef(false);
+  const recognitionRef = useRef(null);
+  const meetingStartTimeRef = useRef(null);
+  const durationIntervalRef = useRef(null);
+  const joinTimeRef = useRef(null);
+  const captionTimeoutRef = useRef(null);
+  const currentUserRef = useRef(null); // Keep a ref so callbacks have access
+  const isMutedRef = useRef(true); // Keep track for recognition
+
+  // Keep currentUserRef in sync
+  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+
+  // Meeting duration timer
+  useEffect(() => {
+    if (!loading && !error) {
+      joinTimeRef.current = Date.now();
+      durationIntervalRef.current = setInterval(() => {
+        setMeetingDuration(Math.floor((Date.now() - joinTimeRef.current) / 1000));
+      }, 1000);
+    }
+    return () => { if (durationIntervalRef.current) clearInterval(durationIntervalRef.current); };
+  }, [loading, error]);
+
+  // Clean up old reactions
+  useEffect(() => {
+    if (reactions.length > 0) {
+      const timer = setTimeout(() => { setReactions(prev => prev.filter(r => Date.now() - r.timestamp < 3000)); }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [reactions]);
 
   // Initialize meeting
   useEffect(() => {
-    // Prevent multiple initializations
-    if (socketConnectedRef.current) {
-      console.log('⚠️ Already initialized, skipping');
-      return;
-    }
-
+    if (socketConnectedRef.current) return;
     const reloadKey = `liveMeetingReload:${meetingId}`;
-    const shouldForceRejoin = sessionStorage.getItem(reloadKey) === '1';
-
-    if (shouldForceRejoin) {
+    if (sessionStorage.getItem(reloadKey) === '1') {
       sessionStorage.removeItem(reloadKey);
-      console.log('🔄 Meeting page was refreshed, sending user back to meetings list');
       navigate('/live-meetings', { replace: true });
       return;
     }
-
-    const handlePageExit = () => {
-      console.log('🚪 Page is unloading, disconnecting meeting session');
-      sessionStorage.setItem(reloadKey, '1');
-      cleanup();
-    };
-
+    const handlePageExit = () => { sessionStorage.setItem(reloadKey, '1'); cleanup(); };
     window.addEventListener('beforeunload', handlePageExit);
     window.addEventListener('pagehide', handlePageExit);
 
-    console.log('🚀 Starting meeting initialization');
     socketConnectedRef.current = true;
     initializeMeeting();
     
     return () => {
-      console.log('🧹 Cleaning up meeting room');
       window.removeEventListener('beforeunload', handlePageExit);
       window.removeEventListener('pagehide', handlePageExit);
       cleanup();
@@ -94,832 +115,420 @@ export default function LiveMeetingRoom() {
   const initializeMeeting = async () => {
     try {
       setLoading(true);
-      
-      // Get current user
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/login');
-        return;
+      if (!session) { navigate('/login'); return; }
+
+      const meetingData = await api.get(`/live-meetings/${meetingId}`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+      setMeeting(meetingData);
+      const isUserHost = meetingData.user_id === session.user.id;
+      setIsHost(isUserHost);
+
+      // Auto-start if scheduled and user is host
+      if (meetingData.status === 'scheduled' && isUserHost) {
+        try {
+          await api.post(`/live-meetings/${meetingId}/start`, {}, { headers: { Authorization: `Bearer ${session.access_token}` } });
+          meetingData.status = 'active';
+          setMeeting({ ...meetingData });
+        } catch (e) {
+          console.error("Failed to auto-start meeting:", e);
+        }
       }
 
-      // Fetch meeting details
-      const meetingData = await api.get(`/live-meetings/${meetingId}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
-      });
-
-      // Backend returns meeting data directly, not nested under .data
-      setMeeting(meetingData);
-      setIsHost(meetingData.user_id === session.user.id);
-
-      // Find current user's participant record or use host info
-      let currentParticipant = meetingData.participants?.find(p => 
-        p.team_member?.email === session.user.email
-      );
-
+      let currentParticipant = meetingData.participants?.find(p => p.team_member?.email === session.user.email);
       let userInfo;
-      
-      // If user is the host but not in participants, allow them as host
       if (!currentParticipant && meetingData.user_id === session.user.id) {
-        // Host can join even if not in participants list
-        // Note: participantId will be set by backend when socket authenticates
         const { data: { user } } = await supabase.auth.getUser();
-        userInfo = {
-          userId: session.user.id,
-          participantId: null, // Will be set by backend
-          name: user.user_metadata?.display_name || meetingData.creator?.display_name || 'Host',
-          email: session.user.email,
-          isHost: true
-        };
+        userInfo = { userId: session.user.id, participantId: null, name: user.user_metadata?.display_name || meetingData.creator?.display_name || 'Host', email: session.user.email, isHost: true };
         setCurrentUser(userInfo);
       } else if (currentParticipant) {
-        // Team member joining
-        userInfo = {
-          userId: currentParticipant.team_member_id, // Use team_member_id for Socket.IO
-          participantId: currentParticipant.id,
-          name: currentParticipant.team_member?.name || 'Team Member',
-          email: currentParticipant.team_member?.email || session.user.email,
-          isHost: false
-        };
+        userInfo = { userId: currentParticipant.team_member_id, participantId: currentParticipant.id, name: currentParticipant.team_member?.name || 'Team Member', email: currentParticipant.team_member?.email || session.user.email, isHost: false };
         setCurrentUser(userInfo);
       } else {
         setError('You are not authorized to join this meeting');
         return;
       }
 
-      // Start meeting if host and not started
-      if (meetingData.user_id === session.user.id && meetingData.status === 'scheduled') {
-        try {
-          await api.post(`/live-meetings/${meetingId}/start`, {}, {
-            headers: { Authorization: `Bearer ${session.access_token}` }
-          });
-        } catch (startError) {
-          // If already active, that's fine - continue
-          if (!startError.message?.includes('already active')) {
-            console.error('Error starting meeting:', startError);
-          }
-        }
-      }
+      const stream = await setupMedia();
+      const wrm = new WebRTCManager(socketClient, userInfo.userId);
+      wrm.localStream = stream;
+      webrtcManagerRef.current = wrm;
+      wrm.on('remoteStream', ({ userId, stream }) => {
+        setRemoteStreams(prev => { const next = new Map(prev); next.set(userId, stream); return next; });
+      });
+      wrm.on('peerDisconnected', (userId) => {
+        setRemoteStreams(prev => { const next = new Map(prev); next.delete(userId); return next; });
+      });
 
-      // Initialize media FIRST and get the stream
-      const stream = await initializeMedia();
-
-      // Initialize WebRTC with the stream and current user ID
-      webrtcManagerRef.current = new WebRTCManager(socketClient, userInfo.userId);
-      webrtcManagerRef.current.localStream = stream;
+      const authData = await socketClient.connect(session.access_token, meetingId, userInfo.userId);
+      const mappedParticipants = (authData.participants || []).map(p => ({
+        participantId: p.id,
+        userId: p.team_member_id,
+        userName: p.team_member?.name || 'Participant',
+        isHost: p.user_id === meetingData.user_id,
+        is_muted: p.is_muted,
+        is_video_on: p.is_video_on,
+        is_screen_sharing: p.is_screen_sharing,
+        is_hand_raised: p.is_hand_raised
+      }));
+      setParticipants(mappedParticipants);
       
-      setupWebRTCListeners();
-
-      // Setup Socket.IO listeners BEFORE connecting
       setupSocketListeners();
 
-      // Connect to Socket.IO - this will trigger participant-joined events
-      await socketClient.connect(
-        session.access_token,
-        meetingId,
-        userInfo.userId
-      );
-
-      // Load existing data
-      await loadMeetingData(session.access_token);
-
-      // Initialize speech recognition for transcription
-      initializeSpeechRecognition();
+      // Start speech recognition for live captions automatically
+      startSpeechRecognition(userInfo);
 
       setLoading(false);
-
-    } catch (error) {
-      console.error('Error initializing meeting:', error);
-      setError(error.message || 'Failed to join meeting');
+    } catch (err) {
+      setError(err.message || 'Failed to join meeting');
       setLoading(false);
     }
   };
 
-  const initializeMedia = async () => {
+  const setupMedia = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 720 },
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
         audio: {
-          echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true
-        }
+          echoCancellation: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+          channelCount: 1
+        } 
       });
-
       setLocalStream(stream);
-      
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-
-      console.log('Local media initialized');
-      return stream; // Return the stream so it can be used immediately
-
-    } catch (error) {
-      console.error('Error accessing media devices:', error);
-      setError('Could not access camera/microphone. Please check permissions.');
-      throw error;
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      return stream;
+    } catch (err) {
+      console.warn("Could not get media devices", err);
+      return null;
     }
   };
 
-  const setupWebRTCListeners = () => {
-    const webrtc = webrtcManagerRef.current;
-    
-    console.log('🎧 Setting up WebRTC listeners');
-
-    webrtc.on('localStream', (stream) => {
-      console.log('📹 Local stream received in component');
-      setLocalStream(stream);
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-    });
-
-    webrtc.on('remoteStream', ({ userId, stream }) => {
-      console.log('📺 Remote stream received in component from userId:', userId);
-      console.log('   Stream has', stream.getTracks().length, 'tracks');
-      setRemoteStreams(prev => {
-        const updated = new Map(prev);
-        updated.set(userId, stream);
-        console.log('✅ Updated remoteStreams, now has', updated.size, 'streams');
-        return updated;
-      });
-    });
-
-    webrtc.on('peerDisconnected', (userId) => {
-      setRemoteStreams(prev => {
-        const updated = new Map(prev);
-        updated.delete(userId);
-        return updated;
-      });
-    });
-
-    webrtc.on('peerError', ({ userId, error }) => {
-      console.error('Peer error:', userId, error);
-    });
-  };
-
-  const setupSocketListeners = () => {
-    // Auth success - update current user with participant ID from backend
-    socketClient.on('auth-success', (data) => {
-      console.log('✅ Socket auth successful, updating participant ID:', data.participantId);
-      setCurrentUser(prev => {
-        if (prev) {
-          return {
-            ...prev,
-            participantId: data.participantId
-          };
-        }
-        return prev;
-      });
-
-      if (webrtcManagerRef.current && data.participantId) {
-        webrtcManagerRef.current.currentUserId = data.participantId;
-      }
-    });
-
-    // Participant events
-    socketClient.on('participant-joined', (data) => {
-      console.log('🔔 [Frontend] Participant joined:', data.userName, 'userId:', data.userId);
-      setParticipants(prev => {
-        // Avoid duplicates
-        if (prev.some(p => p.userId === data.userId)) {
-          console.log('⚠️ [Frontend] Participant already in list, skipping');
-          return prev;
-        }
-        console.log('✅ [Frontend] Adding participant to list');
-        return [...prev, data];
-      });
-    });
-
-    socketClient.on('participant-left', (data) => {
-      console.log('Participant left:', data);
-      setParticipants(prev => prev.filter(p => p.userId !== data.userId));
-    });
-
-    socketClient.on('participant-media-update', (data) => {
-      setParticipants(prev => prev.map(p => 
-        p.userId === data.userId ? { ...p, ...data } : p
-      ));
-    });
-
-    // Chat events
-    socketClient.on('chat-message', (message) => {
-      setChatMessages(prev => [...prev, message]);
-    });
-
-    // Transcript events
-    socketClient.on('transcript-update', (segment) => {
-      // Use the backend as the source of truth for final transcript entries.
-      // Skip local echo for our own final segment because the local interim
-      // already rendered the text and the server will broadcast the final copy.
-      const isOwnSegment = segment.speaker_id && currentUser?.participantId && segment.speaker_id === currentUser.participantId;
-
-      if (!isOwnSegment || !segment.is_final) {
-        setTranscriptSegments(prev => {
-          const next = [...prev];
-
-          // Prevent duplicate final rows when the same final segment is broadcast
-          // back to the author after local interim rendering.
-          const duplicateIndex = next.findIndex(item =>
-            item.id && segment.id && item.id === segment.id
-          );
-
-          if (duplicateIndex !== -1) {
-            next[duplicateIndex] = segment;
-            return next;
-          }
-
-          return [...next, segment];
-        });
-      }
-
-      // Show live caption only for remote speakers or final server updates.
-      // This prevents the host from seeing duplicate local + server captions.
-      if (!isOwnSegment || !segment.is_final) {
-        setLiveCaption({
-          text: segment.text,
-          speaker: segment.speaker_display_name || segment.speaker_name,
-          isFinal: segment.is_final,
-          timestamp: Date.now()
-        });
-      }
-
-      // Display captions from other participants with speaker attribution
-      // Only show captions from others if they're final and not from current user
-      if (segment.is_final && segment.speaker_id !== currentUser?.participantId) {
-        console.log('📝 Received transcript from participant:', segment.speaker_display_name || segment.speaker_name);
-        
-        // Show caption from other participant
-        const otherCaption = {
-          text: segment.text,
-          speaker: segment.speaker_display_name || segment.speaker_name || 'Participant',
-          isFinal: true,
-          isFromOther: true,
-          timestamp: Date.now()
-        };
-        
-        setLiveCaption(otherCaption);
-        
-        // Clear after 3 seconds
-        const captionTimestamp = Date.now();
-        setTimeout(() => {
-          setLiveCaption(prev => {
-            // Only clear if this is still the current caption
-            if (prev?.timestamp === captionTimestamp) {
-              return null;
-            }
-            return prev;
-          });
-        }, 3000);
-      }
-    });
-
-    // Poll events
-    socketClient.on('poll-created', (poll) => {
-      setPolls(prev => [...prev, poll]);
-    });
-
-    socketClient.on('poll-updated', (updatedPoll) => {
-      setPolls(prev => prev.map(p => 
-        p.id === updatedPoll.id ? updatedPoll : p
-      ));
-    });
-
-    socketClient.on('poll-closed', ({ pollId }) => {
-      setPolls(prev => prev.map(p => 
-        p.id === pollId ? { ...p, is_active: false } : p
-      ));
-    });
-
-    // Hand raise events
-    socketClient.on('hand-raise-update', (data) => {
-      setParticipants(prev => prev.map(p => 
-        p.userId === data.userId 
-          ? { ...p, is_hand_raised: data.isRaised }
-          : p
-      ));
-    });
-
-    // Meeting end event
-    socketClient.on('meeting-ended', (data) => {
-      alert('Meeting has ended');
-      navigate(`/live-meetings/${meetingId}/results`);
-    });
-  };
-
-  const loadMeetingData = async (token) => {
-    try {
-      // Load chat history
-      const chatData = await api.get(`/live-meetings/${meetingId}/chat`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setChatMessages(Array.isArray(chatData) ? chatData : (chatData.data || []));
-
-      // Load polls
-      const pollsData = await api.get(`/live-meetings/${meetingId}/polls`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setPolls(Array.isArray(pollsData) ? pollsData : (pollsData.data || []));
-
-      // Load transcript
-      const transcriptData = await api.get(`/live-meetings/${meetingId}/transcript`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTranscriptSegments(transcriptData.segments || []);
-
-    } catch (error) {
-      console.error('Error loading meeting data:', error);
-    }
-  };
-
-  const cleanup = () => {
-    // Stop speech recognition
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-
-    // Stop local media
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-    }
-
-    // Destroy WebRTC
-    if (webrtcManagerRef.current) {
-      webrtcManagerRef.current.destroy();
-    }
-
-    // Disconnect Socket.IO
-    socketClient.disconnect();
-  };
-
-  const initializeSpeechRecognition = () => {
-    // Check if browser supports Speech Recognition
+  // ===== Speech Recognition for Live Captions =====
+  const startSpeechRecognition = (userInfo) => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
     if (!SpeechRecognition) {
-      console.log('⚠️ Speech Recognition not supported in this browser');
+      console.warn('SpeechRecognition API not supported');
       return;
     }
 
-    // Stop any existing recognition first
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        // Ignore errors when stopping
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
+
+    let finalTranscript = '';
+    let lastResultTime = Date.now();
+    meetingStartTimeRef.current = Date.now();
+
+    recognition.onresult = (event) => {
+      let interimText = '';
+      let isFinal = false;
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+          isFinal = true;
+        } else {
+          interimText += transcript;
+        }
       }
-      recognitionRef.current = null;
-    }
+
+      lastResultTime = Date.now();
+      const speakerName = currentUserRef.current?.name || userInfo.name || 'You';
+      const displayText = (isFinal ? finalTranscript : (finalTranscript + interimText)).trim();
+
+      if (displayText) {
+        // Show caption locally
+        setLiveCaption({ speaker: speakerName, text: displayText, isFinal });
+
+        // Clear caption after a pause (3 seconds after final, or 5s after interim stops)
+        if (captionTimeoutRef.current) clearTimeout(captionTimeoutRef.current);
+        captionTimeoutRef.current = setTimeout(() => {
+          setLiveCaption(null);
+        }, isFinal ? 4000 : 6000);
+
+        // Send final segments to backend for transcript storage and broadcast
+        if (isFinal && displayText.trim().length > 1) {
+          const elapsedSec = (Date.now() - meetingStartTimeRef.current) / 1000;
+          socketClient.sendTranscriptSegment({
+            text: displayText.trim(),
+            speaker_name: speakerName,
+            speaker_id: currentUserRef.current?.participantId || null,
+            language: 'en',
+            confidence: event.results[event.results.length - 1]?.[0]?.confidence || 0.85,
+            start_time: Math.max(0, elapsedSec - 3),
+            end_time: elapsedSec,
+            is_final: true
+          });
+          finalTranscript = '';
+        }
+      }
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === 'no-speech' || event.error === 'aborted') return;
+      console.warn('Speech recognition error:', event.error);
+    };
+
+    recognition.onend = () => {
+      // Auto-restart unless intentionally stopped (user muted)
+      if (recognitionRef.current && !isMutedRef.current) {
+        try { recognition.start(); } catch (e) { /* ignore */ }
+      }
+    };
 
     try {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = meeting?.transcript_language || 'en-US';
-
-      meetingStartTimeRef.current = Date.now();
-
-      recognition.onstart = () => {
-        console.log('🎤 Speech recognition started');
-        setIsTranscriptionEnabled(true);
-      };
-
-      recognition.onresult = (event) => {
-        // CRITICAL FIX: Check if microphone is muted before processing
-        if (isMuted) {
-          console.log('🔇 Mic is muted, ignoring speech recognition results');
-          return; // Don't process if muted
-        }
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const result = event.results[i];
-          const transcript = result[0].transcript;
-          const confidence = result[0].confidence;
-          const isFinal = result.isFinal;
-
-          // Only process non-empty transcripts
-          if (!transcript.trim()) {
-            continue;
-          }
-
-          const currentTime = (Date.now() - meetingStartTimeRef.current) / 1000;
-
-          // FIX: Use snake_case to match backend expectations
-          const segment = {
-            text: transcript.trim(),
-            confidence: confidence,
-            is_final: isFinal,
-            start_time: currentTime,
-            end_time: currentTime + 1,
-            language: meeting?.transcript_language || 'en',
-            speaker_name: currentUser?.name || 'You',
-            speaker_id: currentUser?.participantId || 'unknown'
-          };
-
-          // Show live caption with speaker name for multi-participant scenarios
-          setLiveCaption({
-            text: transcript,
-            speaker: currentUser?.name || 'You',
-            isFinal: isFinal,
-            timestamp: Date.now() // Add timestamp for clearing
-          });
-
-          // CRITICAL FIX: Only clear caption after delay if it's still the same caption
-          if (isFinal) {
-            const captionTimestamp = Date.now();
-            setTimeout(() => {
-              setLiveCaption(prev => {
-                // Only clear if this is still the current caption (same timestamp)
-                if (prev?.timestamp === captionTimestamp) {
-                  return null;
-                }
-                return prev;
-              });
-            }, 3000);
-          }
-
-          // Send to server only if final
-          if (isFinal) {
-            console.log('📤 Sending final transcript segment:', transcript);
-            socketClient.sendTranscriptSegment(segment);
-          }
-
-          // Update local state for real-time display
-          setTranscriptSegments(prev => {
-            // Replace interim results, append final results
-            if (isFinal) {
-              return [...prev, segment];
-            } else {
-              // Remove last interim result and add new one
-              const filtered = prev.filter(s => s.is_final);
-              return [...filtered, segment];
-            }
-          });
-        }
-      };
-
-      recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        
-        // Stop recognition on any error to prevent infinite loops
-        if (recognitionRef.current) {
-          recognitionRef.current = null;
-          setIsTranscriptionEnabled(false);
-        }
-        
-        // Show user-friendly error
-        if (event.error === 'not-allowed' || event.error === 'audio-capture') {
-          setError('Microphone access denied. Please allow microphone access to enable transcription.');
-        } else if (event.error === 'aborted') {
-          console.log('⏸️ Speech recognition aborted - may be microphone conflict with video call');
-        }
-      };
-
-      recognition.onend = () => {
-        console.log('🎤 Speech recognition ended');
-        // Only restart if user manually enabled it, it's still in ref, AND mic is not muted
-        if (recognitionRef.current && isTranscriptionEnabled && !isMuted) {
-          setTimeout(() => {
-            try {
-              console.log('🔄 Restarting speech recognition after it ended');
-              recognition.start();
-            } catch (err) {
-              console.log('Could not restart recognition:', err.message);
-              recognitionRef.current = null;
-              setIsTranscriptionEnabled(false);
-            }
-          }, 500);
-        } else {
-          setIsTranscriptionEnabled(false);
-        }
-      };
-
+      if (!isMutedRef.current) {
+        recognition.start();
+      }
       recognitionRef.current = recognition;
-      recognition.start();
-      console.log('✅ Speech recognition initialized');
-    } catch (error) {
-      console.error('Error initializing speech recognition:', error);
-      setIsTranscriptionEnabled(false);
+    } catch (e) {
+      console.warn('Could not start speech recognition:', e);
     }
   };
 
-  const stopSpeechRecognition = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        console.log('Error stopping recognition:', e.message);
+  const setupSocketListeners = () => {
+    // The WebRTCManager handles its own socket listeners for peer connections
+    // (participant-joined, webrtc-offer, webrtc-answer, ice-candidate)
+    // We only need to listen for UI-relevant events here.
+
+    socketClient.on('participant-joined', (newParticipant) => {
+      setParticipants(prev => {
+        if (!prev.find(p => p.userId === newParticipant.userId)) {
+          return [...prev, newParticipant];
+        }
+        return prev;
+      });
+    });
+
+    socketClient.on('participant-left', ({ userId }) => {
+      setParticipants(prev => prev.filter(p => p.userId !== userId));
+    });
+    
+    socketClient.on('participant-media-update', ({ userId, ...updates }) => {
+      setParticipants(prev => prev.map(p => p.userId === userId ? { ...p, ...updates } : p));
+    });
+
+    socketClient.on('hand-raise-update', ({ userId, isRaised }) => {
+      setParticipants(prev => prev.map(p => p.userId === userId ? { ...p, is_hand_raised: isRaised } : p));
+    });
+    
+    socketClient.on('chat-message', (msg) => { setChatMessages(prev => [...prev, msg]); });
+
+    socketClient.on('reaction', (reaction) => {
+      setReactions(prev => [...prev, { ...reaction, id: Math.random().toString(36).substr(2, 9), timestamp: Date.now() }]);
+    });
+
+    socketClient.on('meeting-ended', () => { cleanup(); navigate('/live-meetings'); });
+
+    // Transcript updates from other participants (for live captions of others)
+    socketClient.on('transcript-update', (segment) => {
+      setTranscriptSegments(prev => [...prev, segment]);
+      // Show caption from other speakers
+      if (segment.speaker_display_name && segment.speaker_display_name !== currentUserRef.current?.name) {
+        setLiveCaption({ speaker: segment.speaker_display_name, text: segment.text, isFinal: segment.is_final });
+        if (captionTimeoutRef.current) clearTimeout(captionTimeoutRef.current);
+        captionTimeoutRef.current = setTimeout(() => setLiveCaption(null), 4000);
       }
+    });
+
+    socketClient.on('poll-created', (poll) => setPolls(prev => [poll, ...prev]));
+    socketClient.on('poll-updated', (poll) => {
+      setPolls(prev => prev.map(p => p.id === poll.id ? poll : p));
+    });
+    socketClient.on('poll-closed', ({ pollId }) => {
+      setPolls(prev => prev.map(p => p.id === pollId ? { ...p, is_active: false } : p));
+    });
+  };
+
+  const cleanup = () => {
+    if (localStream) { localStream.getTracks().forEach(t => t.stop()); setLocalStream(null); }
+    if (webrtcManagerRef.current) { webrtcManagerRef.current.destroy(); webrtcManagerRef.current = null; }
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch(e) {}
       recognitionRef.current = null;
     }
-    setIsTranscriptionEnabled(false);
-    setLiveCaption(null);
+    if (captionTimeoutRef.current) clearTimeout(captionTimeoutRef.current);
+    socketClient.disconnect();
   };
 
-  const toggleTranscription = () => {
-    if (isTranscriptionEnabled) {
-      stopSpeechRecognition();
-    } else {
-      initializeSpeechRecognition();
-    }
-  };
-
-  // Control handlers
   const handleToggleMute = () => {
-    if (webrtcManagerRef.current) {
-      const newState = !isMuted;
-      webrtcManagerRef.current.toggleAudio(!newState);
-      setIsMuted(newState);
-      
-      // CRITICAL FIX: Stop/restart speech recognition based on mute state
-      // When muting: stop recognizing
-      if (newState === true) {
-        // User just muted
-        if (recognitionRef.current && isTranscriptionEnabled) {
-          console.log('🔇 Stopping speech recognition (mic muted)');
-          try {
-            recognitionRef.current.stop();
-          } catch (e) {
-            console.log('Error stopping recognition:', e.message);
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        const nowMuted = !audioTrack.enabled;
+        setIsMuted(nowMuted);
+        socketClient.updateMediaState({ isMuted: nowMuted });
+
+        // Pause/resume speech recognition with mute
+        if (nowMuted) {
+          if (recognitionRef.current) {
+            try { recognitionRef.current.stop(); } catch(e) {}
+            recognitionRef.current = null;
           }
-        }
-      } else {
-        // User just unmuted - restart transcription if it was enabled
-        if (isTranscriptionEnabled && recognitionRef.current) {
-          console.log('🎤 Restarting speech recognition (mic unmuted)');
-          try {
-            recognitionRef.current.start();
-          } catch (e) {
-            console.log('Error restarting recognition:', e.message);
-          }
+        } else {
+          // Resume speech recognition
+          startSpeechRecognition(currentUserRef.current);
         }
       }
     }
   };
 
   const handleToggleVideo = () => {
-    if (webrtcManagerRef.current) {
-      const newState = !isVideoOn;
-      webrtcManagerRef.current.toggleVideo(newState);
-      setIsVideoOn(newState);
+    if (localStream) {
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsVideoOn(videoTrack.enabled);
+        socketClient.updateMediaState({ isVideoOn: videoTrack.enabled });
+      }
     }
   };
 
   const handleToggleScreenShare = async () => {
-    if (!webrtcManagerRef.current) return;
-
-    try {
-      if (isScreenSharing) {
-        await webrtcManagerRef.current.stopScreenShare();
-        setIsScreenSharing(false);
-      } else {
-        await webrtcManagerRef.current.startScreenShare();
+    if (!isScreenSharing) {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        const screenVideoTrack = screenStream.getVideoTracks()[0];
+        screenVideoTrack.onended = () => handleToggleScreenShare();
+        webrtcManagerRef.current?.replaceTrack?.(localStream?.getVideoTracks()[0], screenVideoTrack);
         setIsScreenSharing(true);
+        socketClient.updateMediaState({ isScreenSharing: true });
+      } catch (err) { console.error("Screen share error", err); }
+    } else {
+      if (localStream) {
+        webrtcManagerRef.current?.replaceTrack?.(null, localStream.getVideoTracks()[0]);
+        setIsScreenSharing(false);
+        socketClient.updateMediaState({ isScreenSharing: false });
       }
-    } catch (error) {
-      console.error('Screen share error:', error);
-      alert('Failed to share screen. Please try again.');
     }
   };
 
   const handleToggleHandRaise = () => {
     const newState = !isHandRaised;
-    socketClient.raiseHand(newState);
     setIsHandRaised(newState);
+    socketClient.raiseHand(newState);
   };
 
-  const handleLeaveMeeting = () => {
-    if (confirm('Are you sure you want to leave the meeting?')) {
-      cleanup();
-      navigate('/live-meetings');
-    }
-  };
+  const handleLeaveMeeting = () => { cleanup(); navigate('/live-meetings'); };
 
   const handleEndMeeting = async () => {
-    if (!isHost) return;
-    
-    if (confirm('Are you sure you want to end this meeting for everyone?')) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        await api.post(`/live-meetings/${meetingId}/end`, {}, {
-          headers: { Authorization: `Bearer ${session.access_token}` }
-        });
-        
-        cleanup();
-        navigate(`/live-meetings/${meetingId}/results`);
-      } catch (error) {
-        console.error('Error ending meeting:', error);
-        alert('Failed to end meeting. Please try again.');
-      }
-    }
+    try {
+      await api.post(`/live-meetings/${meetingId}/end`);
+      cleanup();
+      navigate('/live-meetings');
+    } catch (err) { console.error(err); }
   };
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-16 h-16 border-4 border-white border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-white text-lg">Joining meeting...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleReaction = (emoji) => {
+    const reaction = { userId: currentUser?.userId, userName: currentUser?.name, emoji };
+    // Emit directly through socket
+    if (socketClient.socket) {
+      socketClient.socket.emit('reaction', { emoji });
+    }
+    setReactions(prev => [...prev, { ...reaction, id: Math.random().toString(36).substr(2, 9), timestamp: Date.now() }]);
+  };
 
-  // Error state
-  if (error) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-white mb-2">Unable to Join Meeting</h2>
-          <p className="text-gray-400 mb-6">{error}</p>
-          <button
-            onClick={() => navigate('/live-meetings')}
-            className="bg-white text-black px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            Back to Meetings
-          </button>
-        </div>
+  // ===== RENDER =====
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div className="spinner" style={{ width: 48, height: 48, margin: '0 auto 24px' }} />
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600 }}>Joining secure meeting...</p>
       </div>
-    );
-  }
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
+      <div className="card" style={{ padding: 40, textAlign: 'center', maxWidth: 400 }}>
+        <div style={{ width: 64, height: 64, background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: 24 }}>⚠</div>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Unable to Join</h2>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 32 }}>{error}</p>
+        <button onClick={() => navigate('/live-meetings')} className="btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>Back to Meetings</button>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="h-screen bg-black flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-white font-semibold text-lg">{meeting?.title}</h1>
-          <div className="flex items-center gap-2">
-            <p className="text-gray-400 text-sm">
-              {participants.length + 1} participant{participants.length !== 0 ? 's' : ''}
-            </p>
-            {/* Transcription Status Indicator */}
-            {isTranscriptionEnabled && (
-              <div className="flex items-center gap-1 ml-2 px-2 py-1 bg-red-600/20 rounded-full">
-                <span className="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-                <span className="text-xs text-red-400 font-medium">Recording</span>
-              </div>
-            )}
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#000', overflow: 'hidden' }}>
+      
+      {/* Header Bar */}
+      <div style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <h1 style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{meeting?.title}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-overlay)', padding: '2px 8px', borderRadius: 100, border: '1px solid var(--border-default)' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} />
+            <span style={{ color: 'var(--text-secondary)', fontSize: 12, fontWeight: 700 }}>{participants.length + 1}</span>
           </div>
         </div>
-        
-        <div className="flex items-center gap-3">
-          {/* Transcription Toggle Button */}
-          <button
-            onClick={toggleTranscription}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isTranscriptionEnabled
-                ? 'bg-red-600 hover:bg-red-700 text-white'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-            }`}
-            title={isTranscriptionEnabled ? 'Stop Recording' : 'Start Recording'}
-          >
-            🎙️ {isTranscriptionEnabled ? 'Recording' : 'Record'}
-          </button>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {isHost && (
-            <button
-              onClick={handleEndMeeting}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-            >
-              End Meeting
-            </button>
+            <button onClick={handleEndMeeting} className="btn-secondary" style={{ padding: '6px 12px', fontSize: 12, color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.3)' }}>End Meeting</button>
           )}
-          
-          <button
-            onClick={() => setShowSidebar(!showSidebar)}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            {showSidebar ? '→' : '←'}
-          </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+        
         {/* Video Area */}
-        <div className="flex-1 flex items-center justify-center p-4 relative">
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: 'var(--bg-base)' }}>
           <VideoGrid
-            localStream={localStream}
-            remoteStreams={remoteStreams}
-            participants={participants}
-            currentUser={currentUser}
-            isScreenSharing={isScreenSharing}
+            localStream={localStream} remoteStreams={remoteStreams} participants={participants} currentUser={currentUser} isScreenSharing={isScreenSharing} pinnedUserId={pinnedUserId} onPinUser={setPinnedUserId} reactions={reactions} layoutMode={layoutMode}
           />
           
           {/* Live Captions Overlay */}
-          {showCaptions && liveCaption && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="absolute bottom-20 left-1/2 transform -translate-x-1/2 max-w-2xl w-full px-4"
-            >
-              <div className="bg-black/80 backdrop-blur-sm text-white px-6 py-3 rounded-lg shadow-lg border border-white/10">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-semibold text-blue-400">
-                    {liveCaption.speaker}
-                  </span>
-                  {!liveCaption.isFinal && (
-                    <span className="text-xs text-yellow-400">⏳</span>
-                  )}
+          <AnimatePresence>
+            {showCaptions && liveCaption && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', maxWidth: '80%', zIndex: 50, pointerEvents: 'none' }}>
+                <div style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', padding: '14px 24px', borderRadius: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--info)' }}>{liveCaption.speaker}</span>
+                    {!liveCaption.isFinal && <span className="spinner" style={{ width: 10, height: 10, borderWidth: 2 }} />}
+                  </div>
+                  <p style={{ fontSize: 16, color: '#fff', lineHeight: 1.5, fontWeight: 500, margin: 0 }}>{liveCaption.text}</p>
                 </div>
-                <p className="text-base leading-relaxed">
-                  {liveCaption.text}
-                </p>
-              </div>
-            </motion.div>
-          )}
-          
-          {/* Caption Toggle Button */}
-          <button
-            onClick={() => setShowCaptions(!showCaptions)}
-            className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white p-2 rounded-lg transition-colors"
-            title={showCaptions ? 'Hide Captions' : 'Show Captions'}
-          >
-            {showCaptions ? '💬' : '🚫'}
-          </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Sidebar */}
         <AnimatePresence>
           {showSidebar && (
-            <motion.div
-              initial={{ x: 400, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 400, opacity: 0 }}
-              className="w-96 bg-gray-900 border-l border-gray-800 flex flex-col"
-            >
-              {/* Sidebar Tabs */}
-              <div className="flex border-b border-gray-800">
+            <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 360, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid var(--border-default)', background: 'var(--bg-elevated)', zIndex: 10 }}>
+              
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
                 {[
-                  { key: 'chat', label: 'Chat', icon: '💬' },
-                  { key: 'participants', label: 'People', icon: '👥' },
-                  { key: 'transcript', label: 'Transcript', icon: '📝' },
-                  { key: 'polls', label: 'Polls', icon: '📊' }
+                  { key: 'chat', label: 'Chat', Icon: ChatTabIcon },
+                  { key: 'participants', label: 'People', Icon: PeopleTabIcon },
+                  { key: 'transcript', label: 'Transcript', Icon: TranscriptTabIcon },
+                  { key: 'polls', label: 'Polls', Icon: PollsTabIcon }
                 ].map(tab => (
                   <button
-                    key={tab.key}
-                    onClick={() => setSidebarTab(tab.key)}
-                    className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                      sidebarTab === tab.key
-                        ? 'text-white border-b-2 border-white'
-                        : 'text-gray-400 hover:text-white'
-                    }`}
+                    key={tab.key} onClick={() => setSidebarTab(tab.key)}
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 0', border: 'none', background: 'transparent', cursor: 'pointer', position: 'relative', color: sidebarTab === tab.key ? 'var(--info)' : 'var(--text-secondary)' }}
                   >
-                    <span className="mr-1">{tab.icon}</span>
-                    {tab.label}
+                    <tab.Icon active={sidebarTab === tab.key} />
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{tab.label}</span>
+                    {sidebarTab === tab.key && <motion.div layoutId="sidebarTab" style={{ position: 'absolute', bottom: -1, left: 16, right: 16, height: 2, background: 'var(--info)', borderRadius: '2px 2px 0 0' }} />}
                   </button>
                 ))}
               </div>
 
-              {/* Sidebar Content */}
-              <div className="flex-1 overflow-hidden">
-                {sidebarTab === 'chat' && (
-                  <ChatPanel
-                    messages={chatMessages}
-                    participants={participants}
-                    currentUser={currentUser}
-                    onSendMessage={(message, recipientId, isPrivate) => {
-                      socketClient.sendChatMessage(message, recipientId, isPrivate);
-                    }}
-                  />
-                )}
-
-                {sidebarTab === 'participants' && (
-                  <ParticipantsPanel
-                    participants={participants}
-                    currentUser={currentUser}
-                    isHost={isHost}
-                  />
-                )}
-
-                {sidebarTab === 'transcript' && (
-                  <TranscriptPanel
-                    segments={transcriptSegments}
-                    meetingId={meetingId}
-                  />
-                )}
-
-                {sidebarTab === 'polls' && (
-                  <PollPanel
-                    polls={polls}
-                    currentUser={currentUser}
-                    isHost={isHost}
-                    onCreatePoll={(question, options, allowMultiple, anonymous) => {
-                      socketClient.createPoll(question, options, allowMultiple, anonymous);
-                    }}
-                    onVotePoll={(pollId, optionIds) => {
-                      socketClient.votePoll(pollId, optionIds);
-                    }}
-                    onClosePoll={(pollId) => {
-                      socketClient.closePoll(pollId);
-                    }}
-                  />
-                )}
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                {sidebarTab === 'chat' && <ChatPanel messages={chatMessages} participants={participants} currentUser={currentUser} onSendMessage={(msg, rid, isPriv) => socketClient.sendChatMessage(msg, rid, isPriv)} />}
+                {sidebarTab === 'participants' && <ParticipantsPanel participants={participants} currentUser={currentUser} isHost={isHost} />}
+                {sidebarTab === 'transcript' && <TranscriptPanel segments={transcriptSegments} meetingId={meetingId} />}
+                {sidebarTab === 'polls' && <PollPanel polls={polls} currentUser={currentUser} isHost={isHost} onCreatePoll={(q, o, am, anon) => socketClient.createPoll(q, o, am, anon)} onVotePoll={(pid, oids) => socketClient.votePoll(pid, oids)} onClosePoll={pid => socketClient.closePoll(pid)} />}
               </div>
             </motion.div>
           )}
@@ -927,28 +536,9 @@ export default function LiveMeetingRoom() {
       </div>
 
       {/* Control Bar */}
-      <ControlBar
-        isMuted={isMuted}
-        isVideoOn={isVideoOn}
-        isScreenSharing={isScreenSharing}
-        isHandRaised={isHandRaised}
-        onToggleMute={handleToggleMute}
-        onToggleVideo={handleToggleVideo}
-        onToggleScreenShare={handleToggleScreenShare}
-        onToggleHandRaise={handleToggleHandRaise}
-        onLeaveMeeting={handleLeaveMeeting}
-        showSidebar={showSidebar}
-        onToggleSidebar={() => setShowSidebar(!showSidebar)}
-      />
+      <ControlBar isMuted={isMuted} isVideoOn={isVideoOn} isScreenSharing={isScreenSharing} isHandRaised={isHandRaised} onToggleMute={handleToggleMute} onToggleVideo={handleToggleVideo} onToggleScreenShare={handleToggleScreenShare} onToggleHandRaise={handleToggleHandRaise} onLeaveMeeting={handleLeaveMeeting} showSidebar={showSidebar} onToggleSidebar={() => setShowSidebar(!showSidebar)} onReaction={handleReaction} onToggleCaptions={() => setShowCaptions(!showCaptions)} showCaptions={showCaptions} meetingDuration={meetingDuration} layoutMode={layoutMode} onChangeLayout={setLayoutMode} />
 
-      {/* Hidden local video reference */}
-      <video
-        ref={localVideoRef}
-        autoPlay
-        muted
-        playsInline
-        style={{ display: 'none' }}
-      />
+      <video ref={localVideoRef} autoPlay muted playsInline style={{ display: 'none' }} />
     </div>
   );
 }

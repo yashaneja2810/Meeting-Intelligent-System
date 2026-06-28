@@ -1,4 +1,4 @@
-import google.generativeai as genai
+# import google.generativeai as genai
 from groq import Groq
 from typing import List, Dict, Any
 from .meeting_analyzer import MeetingAnalyzerAgent
@@ -10,10 +10,10 @@ from .audit_agent import AuditAgent
 class AgentOrchestrator:
     def __init__(self, gemini_api_key: str = None, groq_api_key: str = None):
         # Initialize Gemini
-        self.gemini_model = None
-        if gemini_api_key:
-            genai.configure(api_key=gemini_api_key)
-            self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        # self.gemini_model = None
+        # if gemini_api_key:
+        #     genai.configure(api_key=gemini_api_key)
+        #     self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
         # Initialize Groq
         self.groq_client = None
@@ -28,7 +28,7 @@ class AgentOrchestrator:
         team_members: List[Dict[str, Any]],
         user_id: str,
         meeting_id: str,
-        ai_provider: str = "gemini"
+        ai_provider: str = "groq"
     ) -> Dict[str, Any]:
         """
         Orchestrate the multi-agent workflow to process a meeting transcript.
@@ -38,10 +38,10 @@ class AgentOrchestrator:
             if not self.groq_client:
                 raise ValueError("Groq API key not configured")
             model = self.groq_client
-        else:  # gemini
-            if not self.gemini_model:
-                raise ValueError("Gemini API key not configured")
-            model = self.gemini_model
+        # else:  # gemini
+        #     if not self.gemini_model:
+        #         raise ValueError("Gemini API key not configured")
+        #     model = self.gemini_model
         
         # Initialize agents with selected model
         meeting_analyzer = MeetingAnalyzerAgent(model, ai_provider)
@@ -118,7 +118,7 @@ class AgentOrchestrator:
         transcript: str,
         meeting_title: str,
         participants: List[str],
-        ai_provider: str = "gemini"
+        ai_provider: str = "groq"
     ) -> Dict[str, Any]:
         """
         Generate Minutes of Meeting (MOM) from transcript using AI.
@@ -128,10 +128,10 @@ class AgentOrchestrator:
             if not self.groq_client:
                 raise ValueError("Groq API key not configured")
             model = self.groq_client
-        else:  # gemini
-            if not self.gemini_model:
-                raise ValueError("Gemini API key not configured")
-            model = self.gemini_model
+        # else:  # gemini
+        #     if not self.gemini_model:
+        #         raise ValueError("Gemini API key not configured")
+        #     model = self.gemini_model
         
         prompt = f"""
 You are a professional meeting secretary tasked with generating comprehensive Minutes of Meeting (MOM).

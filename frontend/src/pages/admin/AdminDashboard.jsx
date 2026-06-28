@@ -3,33 +3,55 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api'
 import DashboardLayout from '@/components/DashboardLayout'
 import { motion } from 'framer-motion'
+import { useAuthStore } from '@/store/authStore'
+
+function PageLoader() {
+  return (
+    <DashboardLayout>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', width: '100%' }}>
+        <div className="spinner" style={{ width: 28, height: 28 }} />
+      </div>
+    </DashboardLayout>
+  )
+}
+
+function StatCard({ label, value, icon, sub, onClick, accent }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="card"
+      onClick={onClick}
+      style={{ padding: 24, cursor: onClick ? 'pointer' : 'default', position: 'relative', overflow: 'hidden' }}
+    >
+      <div className="noise-overlay" />
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, position: 'relative' }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+          {icon}
+        </div>
+        {accent && <span style={{ width: 7, height: 7, borderRadius: '50%', background: accent, boxShadow: `0 0 8px ${accent}80` }} />}
+      </div>
+      <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--text-primary)', lineHeight: 1, marginBottom: 6, position: 'relative' }}>{value}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', position: 'relative' }}>{label}</div>
+      {sub && <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 4, position: 'relative' }}>{sub}</div>}
+    </motion.div>
+  )
+}
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
-  const [stats, setStats] = useState({
-    totalTasks: 0,
-    pendingTasks: 0,
-    completedTasks: 0,
-    teamMembers: 0,
-    activeMeetings: 0,
-    pendingInvites: 0
-  })
+  const { profile } = useAuthStore()
+  const [stats, setStats] = useState({ totalTasks: 0, pendingTasks: 0, completedTasks: 0, teamMembers: 0, activeMeetings: 0, pendingInvites: 0 })
   const [recentTasks, setRecentTasks] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadDashboard()
-  }, [])
+  useEffect(() => { loadDashboard() }, [])
 
   const loadDashboard = async () => {
     try {
       const [tasks, team, meetings, invites] = await Promise.all([
-        api.get('/tasks'),
-        api.get('/team'),
-        api.get('/meetings'),
-        api.get('/invites/sent')
+        api.get('/tasks'), api.get('/team'), api.get('/meetings'), api.get('/invites/sent')
       ])
-
       setStats({
         totalTasks: tasks.length,
         pendingTasks: tasks.filter(t => t.status === 'pending').length,
@@ -38,8 +60,7 @@ export default function AdminDashboard() {
         activeMeetings: meetings.filter(m => m.processed).length,
         pendingInvites: invites.filter(i => i.status === 'pending').length
       })
-
-      setRecentTasks(tasks.slice(0, 5))
+      setRecentTasks(tasks.slice(0, 6))
     } catch (err) {
       console.error('Load dashboard error:', err)
     } finally {
@@ -47,172 +68,149 @@ export default function AdminDashboard() {
     }
   }
 
-  const statCards = [
-    { label: 'Total Tasks', value: stats.totalTasks, path: '/admin/tasks' },
-    { label: 'Pending Tasks', value: stats.pendingTasks, path: '/admin/tasks' },
-    { label: 'Completed', value: stats.completedTasks, path: '/admin/tasks' },
-    { label: 'Team Members', value: stats.teamMembers, path: '/admin/team' },
-    { label: 'Meetings Processed', value: stats.activeMeetings, path: '/admin/upload' },
-    { label: 'Pending Invites', value: stats.pendingInvites, path: '/admin/invites' }
-  ]
+  const completionPct = stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0
 
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-screen w-full">
-          <div className="w-8 h-8 border-[3px] border-gray-200 border-t-indigo-600 rounded-full animate-spin"></div>
-        </div>
-      </DashboardLayout>
-    )
-  }
+  if (loading) return <PageLoader />
 
   return (
     <DashboardLayout>
-      <div className="max-w-[1400px] mx-auto p-10 lg:p-14">
+      <div style={{ padding: '32px 36px', maxWidth: 1300 }}>
+
         {/* Header */}
-        <div className="mb-14">
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-gray-900 mb-3">Overview</h1>
-          <p className="text-gray-500 text-lg font-medium tracking-tight">Manage your team, meetings, and tasks with AI intelligence.</p>
-        </div>
-
-        {/* Stats Grid - High End Bento Style */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-          {statCards.map((stat, idx) => (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
-              key={stat.label}
-              className="bg-white rounded-[24px] p-7 cursor-pointer group flex flex-col justify-between h-40 shadow-[0_2px_10px_rgba(0,0,0,0.02)] ring-1 ring-gray-200/60 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:ring-indigo-100 transition-all duration-300 relative overflow-hidden"
-              onClick={() => navigate(stat.path)}
-            >
-              {/* Subtle accent gradient on hover */}
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/0 to-indigo-500/0 group-hover:from-indigo-50/50 group-hover:to-transparent transition-colors duration-500 pointer-events-none"></div>
-
-              <div className="flex justify-between items-start relative z-10">
-                <p className="text-gray-500 text-[13px] font-bold tracking-wider uppercase">{stat.label}</p>
-                <div className="opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1 duration-300 bg-white shadow-sm border border-gray-100 w-8 h-8 rounded-full flex items-center justify-center">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-              <p className="text-[3rem] font-black text-gray-900 tracking-tighter leading-none relative z-10">{stat.value}</p>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Two-Column Section */}
-        <div className="grid lg:grid-cols-3 gap-10">
-
-          {/* Recent Tasks */}
-          <div className="lg:col-span-2 bg-white rounded-[2rem] shadow-[0_2px_12px_rgba(0,0,0,0.02)] ring-1 ring-gray-200/60 overflow-hidden flex flex-col">
-            <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-[#FDFDFD]">
-              <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">Recent Activity</h2>
-              <button
-                onClick={() => navigate('/admin/tasks')}
-                className="text-gray-500 font-semibold hover:text-gray-900 text-sm flex items-center gap-1.5 transition-colors bg-white px-4 py-2 rounded-full border border-gray-200 shadow-sm hover:shadow"
-              >
-                View All
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <h1 className="page-title">
+                Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {profile?.display_name?.split(' ')[0] || 'Admin'} 👋
+              </h1>
+              <p className="page-subtitle" style={{ marginTop: 4 }}>Here's what's happening with your team today.</p>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn-secondary" onClick={() => navigate('/live-meetings')} style={{ gap: 8 }}>
+                <svg style={{ width: 15, height: 15 }} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                 </svg>
+                Live Meetings
+              </button>
+              <button className="btn-primary" onClick={() => navigate('/admin/upload')}>
+                + Upload Meeting
               </button>
             </div>
+          </div>
+        </div>
 
+        {/* Stats grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 28 }}>
+          <StatCard label="Total Tasks" value={stats.totalTasks} onClick={() => navigate('/admin/tasks')}
+            icon={<svg style={{width:16,height:16}} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>}
+          />
+          <StatCard label="Pending" value={stats.pendingTasks} onClick={() => navigate('/admin/tasks')} accent="var(--warning)"
+            icon={<svg style={{width:16,height:16}} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+          />
+          <StatCard label="Completed" value={stats.completedTasks} onClick={() => navigate('/admin/tasks')} accent="var(--success)"
+            icon={<svg style={{width:16,height:16}} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>}
+          />
+          <StatCard label="Team Members" value={stats.teamMembers} onClick={() => navigate('/admin/team')}
+            icon={<svg style={{width:16,height:16}} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>}
+          />
+          <StatCard label="Meetings Processed" value={stats.activeMeetings}
+            icon={<svg style={{width:16,height:16}} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>}
+          />
+          <StatCard label="Pending Invites" value={stats.pendingInvites} onClick={() => navigate('/admin/invites')} accent={stats.pendingInvites > 0 ? 'var(--info)' : undefined}
+            icon={<svg style={{width:16,height:16}} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>}
+          />
+        </div>
+
+        {/* Completion bar */}
+        <div className="card" style={{ padding: '20px 24px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Overall Completion</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{completionPct}%</span>
+            </div>
+            <div className="progress-track">
+              <motion.div className="progress-bar" initial={{ width: 0 }} animate={{ width: `${completionPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
+            </div>
+          </div>
+          <div style={{ width: 1, height: 36, background: 'var(--border-subtle)', flexShrink: 0 }} />
+          <div style={{ display: 'flex', gap: 28 }}>
+            {[{ l: 'Done', v: stats.completedTasks, c: 'var(--success)' }, { l: 'Active', v: stats.pendingTasks, c: 'var(--warning)' }].map(s => (
+              <div key={s.l} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: s.c, letterSpacing: '-0.02em' }}>{s.v}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent Tasks + Quick Actions */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 14 }}>
+
+          {/* Recent Tasks */}
+          <div className="card" style={{ overflow: 'hidden' }}>
+            <div className="table-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13.5, fontWeight: 600 }}>Recent Tasks</span>
+              <button className="btn-ghost" onClick={() => navigate('/admin/tasks')} style={{ fontSize: 12, padding: '5px 10px' }}>View all →</button>
+            </div>
             {recentTasks.length === 0 ? (
-              <div className="text-center py-24 px-8 bg-[#FAFAFA] flex-1 flex flex-col items-center justify-center">
-                <div className="w-16 h-16 bg-white rounded-[1.2rem] flex items-center justify-center mb-6 shadow-sm border border-gray-100">
-                  <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+              <div className="empty-state">
+                <div className="empty-icon">
+                  <svg style={{width:22,height:22}} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 </div>
-                <p className="text-gray-900 font-bold text-lg mb-1 tracking-tight">No tasks yet</p>
-                <p className="text-gray-500 text-sm font-medium">Upload a meeting transcript to generate tasks.</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>No tasks yet</p>
+                <p style={{ fontSize: 12.5, color: 'var(--text-tertiary)', marginBottom: 16 }}>Upload a meeting to let AI create tasks automatically.</p>
+                <button className="btn-primary" onClick={() => navigate('/admin/upload')} style={{ fontSize: 13 }}>Upload Meeting</button>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50 bg-[#FAFAFA]">
-                {recentTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="p-6 px-8 hover:bg-white transition-colors cursor-pointer group flex flex-col gap-2"
-                    onClick={() => navigate('/admin/tasks')}
-                  >
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-bold text-gray-900 text-[16px] tracking-tight group-hover:text-indigo-600 transition-colors pr-4">{task.title}</h3>
-                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-widest uppercase ring-1 ring-inset ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-700 ring-emerald-500/20' :
-                          task.status === 'in_progress' ? 'bg-blue-50 text-blue-700 ring-blue-500/20' :
-                            'bg-amber-50 text-amber-700 ring-amber-500/20'
-                        }`}>
-                        {task.status.replace('_', ' ')}
-                      </span>
+              recentTasks.map((task, i) => {
+                const statusMap = {
+                  completed: { label: 'Completed', color: 'var(--success)' },
+                  in_progress: { label: 'In Progress', color: 'var(--warning)' },
+                  pending: { label: 'Pending', color: 'var(--text-tertiary)' }
+                }
+                const s = statusMap[task.status] || statusMap.pending
+                return (
+                  <div key={task.id} className="table-row" onClick={() => navigate('/admin/tasks')} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>{task.title}</p>
+                      {task.assigned_member && (
+                        <p style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>→ {task.assigned_member.name}</p>
+                      )}
                     </div>
-                    <p className="text-[14px] text-gray-500 line-clamp-1 font-medium leading-relaxed">{task.description}</p>
-                    {task.assigned_member && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="w-5 h-5 bg-gray-100 rounded flex items-center justify-center text-gray-700 font-bold text-[10px] border border-gray-200">
-                          {task.assigned_member.name[0]}
-                        </div>
-                        <span className="text-[12px] text-gray-400 font-medium">{task.assigned_member.name}</span>
-                      </div>
-                    )}
+                    <span className="badge badge-default" style={{ color: s.color, borderColor: s.color + '30', background: s.color + '12', flexShrink: 0 }}>{s.label}</span>
                   </div>
-                ))}
-              </div>
+                )
+              })
             )}
           </div>
 
-          {/* Quick Actions Panel */}
-          <div className="space-y-6">
-
-            {/* Ultra Premium "New Meeting" Card */}
-            <div
-              className="bg-gray-900 rounded-[2rem] p-8 cursor-pointer relative overflow-hidden group shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-transform duration-300"
-              onClick={() => navigate('/admin/upload')}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-gray-900 mix-blend-overlay"></div>
-              <div className="absolute -top-10 -right-10 w-48 h-48 bg-gradient-to-bl from-indigo-500/40 to-purple-500/40 rounded-full blur-3xl transition-transform group-hover:scale-150 duration-700"></div>
-
-              <div className="relative z-10 flex flex-col h-full justify-between min-h-[140px]">
-                <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center mb-10 border border-white/20 shadow-inner group-hover:bg-white/20 transition-colors">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
+          {/* Quick Actions */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              { label: 'Upload Meeting', desc: 'Process a new transcript', path: '/admin/upload', icon: '↑', color: '#fff', bg: '#fff', textColor: '#0c0c0e' },
+              { label: 'Live Meeting', desc: 'Start or join a room', path: '/live-meetings', icon: '▶', color: 'var(--info)' },
+              { label: 'Team Management', desc: 'Manage members', path: '/admin/team', icon: '⚙', color: 'var(--text-secondary)' },
+              { label: 'Audit Logs', desc: 'Review all activity', path: '/admin/audit', icon: '☰', color: 'var(--text-secondary)' },
+            ].map(a => (
+              <div
+                key={a.label}
+                className="card"
+                onClick={() => navigate(a.path)}
+                style={{ padding: '16px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, transition: 'all 0.15s ease' }}
+                onMouseOver={e => { e.currentTarget.style.background = 'var(--bg-elevated)'; e.currentTarget.style.borderColor = 'var(--border-default)' }}
+                onMouseOut={e => { e.currentTarget.style.background = 'var(--bg-surface)'; e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
+              >
+                <div style={{ width: 34, height: 34, borderRadius: 9, background: a.bg || 'var(--bg-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: a.textColor || a.color, flexShrink: 0, border: '1px solid var(--border-default)', fontWeight: 700 }}>
+                  {a.icon}
                 </div>
                 <div>
-                  <h3 className="text-2xl font-extrabold text-white mb-1.5 tracking-tight flex items-center justify-between">
-                    New Meeting
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/10 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all duration-300">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
-                    </div>
-                  </h3>
-                  <p className="text-white/60 font-medium text-sm">Upload & process transcript with AI</p>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{a.label}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>{a.desc}</div>
                 </div>
               </div>
-            </div>
-
-            {/* Sub-action card */}
-            <div
-              className="bg-white p-8 cursor-pointer group hover:-translate-y-1 transition-transform duration-300 rounded-[2rem] ring-1 ring-gray-200/60 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-lg"
-              onClick={() => navigate('/admin/team')}
-            >
-              <div className="w-14 h-14 bg-gray-50 rounded-xl flex items-center justify-center mb-8 border border-gray-100 group-hover:bg-indigo-50 group-hover:border-indigo-100 transition-colors duration-300">
-                <svg className="w-6 h-6 text-gray-700 group-hover:text-indigo-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-1.5 tracking-tight flex items-center justify-between">
-                Invite Team
-                <svg className="w-5 h-5 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-              </h3>
-              <p className="text-gray-500 font-medium text-sm">Grow your organization workspace</p>
-            </div>
+            ))}
           </div>
-
         </div>
       </div>
     </DashboardLayout>
