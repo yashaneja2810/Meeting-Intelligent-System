@@ -175,22 +175,28 @@ export default function LiveMeetings() {
 
   return (
     <DashboardLayout>
-      <div style={{ padding: '32px 36px', maxWidth: 1300 }}>
+      <div style={{ padding: '24px 16px', maxWidth: 1300 }}>
+        {/* Use CSS media queries via responsive padding */}
+        <style>{`
+          @media (min-width: 769px) {
+            .lm-container { padding: 32px 36px !important; }
+          }
+        `}</style>
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
-          <div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
             <h1 className="page-title">Live Meetings</h1>
             <p className="page-subtitle">Create and join interactive video meetings with your team.</p>
           </div>
-          <button className="btn-primary" onClick={() => navigate('/live-meetings/create')} style={{ gap: 8 }}>
+          <button className="btn-primary" onClick={() => navigate('/live-meetings/create')} style={{ gap: 8, flexShrink: 0 }}>
             <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
             New Meeting
           </button>
         </div>
 
         {/* Stats row */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 20 }}>
           {STATS.map(s => (
             <div key={s.label} className="card" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 14, flex: 1 }}>
               {s.pulse ? (
@@ -210,7 +216,7 @@ export default function LiveMeetings() {
         </div>
 
         {/* Filter tabs */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
           {TABS.map(t => (
             <button key={t.key} onClick={() => setFilter(t.key)}
               style={{
@@ -249,7 +255,7 @@ export default function LiveMeetings() {
                   <h2 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>My Meetings</h2>
                   <span className="badge badge-default">{filteredOwn.length}</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
                   {filteredOwn.map(m => (
                     <MeetingCard key={m.id} meeting={m} isOwn
                       onJoin={id => navigate(`/live-meetings/${id}`)}
@@ -266,7 +272,7 @@ export default function LiveMeetings() {
                   <h2 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Invited Meetings</h2>
                   <span className="badge badge-default">{filteredParticipating.length}</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
                   {filteredParticipating.map(m => (
                     <MeetingCard key={m.id} meeting={m} isOwn={false}
                       onJoin={id => navigate(`/live-meetings/${id}`)}

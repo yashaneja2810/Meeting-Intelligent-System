@@ -75,7 +75,15 @@ export default function CreateLiveMeeting() {
 
   return (
     <DashboardLayout>
-      <div style={{ padding: '32px 36px', maxWidth: 900 }}>
+      <div style={{ padding: '24px 16px', maxWidth: 900 }}>
+        <style>{`
+          @media (min-width: 769px) {
+            .clm-container { padding: 32px 36px !important; }
+          }
+          @media (max-width: 768px) {
+            .clm-grid { grid-template-columns: 1fr !important; }
+          }
+        `}</style>
 
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
@@ -91,7 +99,7 @@ export default function CreateLiveMeeting() {
           <p className="page-subtitle">Set up a video meeting with real-time AI transcription.</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
+        <div className="clm-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
 
           {/* Form */}
           <motion.div

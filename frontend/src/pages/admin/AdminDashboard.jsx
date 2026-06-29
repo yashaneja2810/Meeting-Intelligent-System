@@ -75,10 +75,17 @@ export default function AdminDashboard() {
   return (
     <DashboardLayout>
       <div style={{ padding: '32px 36px', maxWidth: 1300 }}>
+        <style>{`
+          @media (max-width: 768px) {
+            .admin-bottom-grid { grid-template-columns: 1fr !important; }
+            .admin-completion-bar { flex-direction: column; gap: 16px !important; }
+            .admin-completion-divider { display: none !important; }
+          }
+        `}</style>
 
         {/* Header */}
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h1 className="page-title">
                 Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {profile?.display_name?.split(' ')[0] || 'Admin'} 👋
@@ -100,7 +107,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
           <StatCard label="Total Tasks" value={stats.totalTasks} onClick={() => navigate('/admin/tasks')}
             icon={<svg style={{width:16,height:16}} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>}
           />
@@ -122,7 +129,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Completion bar */}
-        <div className="card" style={{ padding: '20px 24px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div className="card admin-completion-bar" style={{ padding: '20px 24px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Overall Completion</span>
@@ -132,7 +139,7 @@ export default function AdminDashboard() {
               <motion.div className="progress-bar" initial={{ width: 0 }} animate={{ width: `${completionPct}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
             </div>
           </div>
-          <div style={{ width: 1, height: 36, background: 'var(--border-subtle)', flexShrink: 0 }} />
+          <div className="admin-completion-divider" style={{ width: 1, height: 36, background: 'var(--border-subtle)', flexShrink: 0 }} />
           <div style={{ display: 'flex', gap: 28 }}>
             {[{ l: 'Done', v: stats.completedTasks, c: 'var(--success)' }, { l: 'Active', v: stats.pendingTasks, c: 'var(--warning)' }].map(s => (
               <div key={s.l} style={{ textAlign: 'center' }}>
@@ -144,7 +151,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Recent Tasks + Quick Actions */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 14 }}>
+        <div className="admin-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 14 }}>
 
           {/* Recent Tasks */}
           <div className="card" style={{ overflow: 'hidden' }}>

@@ -162,8 +162,14 @@ ${mom.sentiment || 'Neutral'}
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] py-8 px-4">
+    <div className="min-h-screen bg-[#0A0A0A] py-6 px-4 sm:py-8">
       <div className="max-w-5xl mx-auto">
+        <style>{`
+          @media (max-width: 640px) {
+            .mr-actions { flex-direction: column; }
+            .mr-actions button { width: 100%; }
+          }
+        `}</style>
         {/* Header */}
         <div className="mb-8">
           <button
@@ -179,7 +185,7 @@ ${mom.sentiment || 'Neutral'}
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="bg-[#111111] rounded-lg shadow-sm border border-[#333333] p-4">
             <div className="text-2xl mb-1">👥</div>
             <div className="text-2xl font-bold text-gray-100">
@@ -352,7 +358,7 @@ ${mom.sentiment || 'Neutral'}
         )}
 
         {/* Actions */}
-        <div className="flex gap-4">
+        <div className="flex gap-3 flex-wrap mr-actions">
           {meeting?.processed && (
             <button
               onClick={() => navigate('/tasks')}

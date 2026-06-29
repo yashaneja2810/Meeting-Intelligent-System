@@ -134,7 +134,7 @@ export default function Tasks() {
             <p style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>Adjust your filters or upload a new meeting.</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
             <AnimatePresence>
               {tasks.map((task, idx) => {
                 const s = getStatusInfo(task.status)

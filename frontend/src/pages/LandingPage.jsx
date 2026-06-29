@@ -80,6 +80,20 @@ export default function LandingPage() {
 
   return (
     <div style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', minHeight: '100vh', overflowX: 'hidden', fontFamily: 'Inter, sans-serif' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .lp-features-grid { grid-template-columns: 1fr !important; }
+          .lp-steps-grid { grid-template-columns: 1fr 1fr !important; }
+          .lp-mock-stats { grid-template-columns: 1fr 1fr !important; }
+          .lp-footer { flex-direction: column; gap: 8px; text-align: center; }
+          .lp-connector-line { display: none !important; }
+          .lp-cta-card { padding: 48px 24px !important; }
+        }
+        @media (max-width: 480px) {
+          .lp-steps-grid { grid-template-columns: 1fr !important; }
+          .lp-mock-stats { grid-template-columns: 1fr 1fr !important; }
+        }
+      `}</style>
 
       {/* ── NAVBAR ── */}
       <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'frosted' : 'bg-transparent border-transparent'}`}
@@ -176,7 +190,7 @@ export default function LandingPage() {
           </div>
 
           {/* Dashboard mock content */}
-          <div style={{ padding: 24, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+          <div className="lp-mock-stats" style={{ padding: 24, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
             {[
               { label: 'Total Tasks', val: '248', color: '#fff' },
               { label: 'In Progress', val: '64', color: '#f59e0b' },
@@ -232,7 +246,7 @@ export default function LandingPage() {
           </p>
         </motion.div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <div className="lp-features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
           {FEATURES.map((f, i) => (
             <motion.div
               key={f.title}
@@ -260,9 +274,9 @@ export default function LandingPage() {
           <h2 style={{ fontSize: 'clamp(28px, 3.5vw, 48px)', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 72, lineHeight: 1.1 }}>
             How it works.
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32, position: 'relative' }}>
+          <div className="lp-steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32, position: 'relative' }}>
             {/* Connector line */}
-            <div style={{ position: 'absolute', top: 24, left: '12%', right: '12%', height: 1, background: 'var(--border-subtle)', zIndex: 0 }} />
+            <div className="lp-connector-line" style={{ position: 'absolute', top: 24, left: '12%', right: '12%', height: 1, background: 'var(--border-subtle)', zIndex: 0 }} />
             {STEPS.map((step, i) => (
               <motion.div
                 key={step.num}
@@ -292,7 +306,7 @@ export default function LandingPage() {
           transition={{ duration: 0.6 }}
         >
           <div
-            className="stitch-texture"
+            className="stitch-texture lp-cta-card"
             style={{ maxWidth: 700, margin: '0 auto', padding: '72px 48px', borderRadius: 24, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xl)', position: 'relative', overflow: 'hidden' }}
           >
             <div className="noise-overlay" />
@@ -317,7 +331,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ padding: '24px 32px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <footer className="lp-footer" style={{ padding: '24px 32px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 22, height: 22, background: '#fff', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg style={{ width: 12, height: 12 }} fill="none" stroke="#0c0c0e" viewBox="0 0 24 24" strokeWidth={2.5}>

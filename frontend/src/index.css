@@ -591,4 +591,102 @@
   .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
   .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
+  /* ============================================================
+     FULLSCREEN MODE
+     ============================================================ */
+  .meeting-fullscreen {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+  }
+
+  /* ============================================================
+     MOBILE RESPONSIVE — @media max-width: 768px
+     ============================================================ */
+  @media (max-width: 768px) {
+    /* Page headers */
+    .page-header { padding: 20px 16px 0; margin-bottom: 20px; }
+    .page-title { font-size: 20px; }
+    .page-subtitle { font-size: 13px; }
+    .section { padding: 0 16px 24px; }
+
+    /* Dashboard page content — override inline padding on mobile */
+    .dashboard-content > div[style*="padding"] {
+      padding: 20px 16px !important;
+    }
+
+    /* Stat cards */
+    .stat-card { padding: 16px; }
+    .stat-value { font-size: 24px; }
+
+    /* Cards */
+    .card { border-radius: 12px; }
+
+    /* Buttons */
+    .btn { padding: 9px 14px; font-size: 13px; }
+
+    /* Table */
+    .table-row { padding: 12px 16px; }
+    .table-header { padding: 12px 16px; }
+
+    /* Sidebar overlay for dashboard */
+    .mobile-sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 99;
+      animation: fade-in 0.2s ease;
+    }
+
+    /* Meeting sidebar as bottom sheet on mobile */
+    .meeting-sidebar-mobile {
+      position: fixed !important;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      top: auto !important;
+      height: 60vh;
+      max-height: 60vh;
+      width: 100% !important;
+      border-radius: 20px 20px 0 0;
+      border-left: none !important;
+      border-top: 1px solid var(--border-default);
+      z-index: 100 !important;
+    }
+
+    /* Control bar mobile */
+    .meeting-control-bar-mobile {
+      padding: 10px 12px !important;
+    }
+    .meeting-control-bar-mobile .ctrl-btn {
+      width: 44px !important;
+      height: 44px !important;
+    }
+    .meeting-control-bar-mobile .ctrl-btn-leave {
+      width: 56px !important;
+      height: 44px !important;
+    }
+
+    /* Empty state mobile */
+    .empty-state { padding: 48px 16px; }
+    .empty-icon { width: 44px; height: 44px; border-radius: 12px; }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .slide-up-enter {
+    animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
 }

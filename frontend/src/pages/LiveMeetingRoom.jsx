@@ -18,9 +18,22 @@ const PeopleTabIcon = ({ active }) => <svg width="18" height="18" viewBox="0 0 2
 const TranscriptTabIcon = ({ active }) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? 'var(--info)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>;
 const PollsTabIcon = ({ active }) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? 'var(--info)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>;
 
+// Hook to detect mobile
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= breakpoint);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export default function LiveMeetingRoom() {
   const { id: meetingId } = useParams();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   // Meeting state
   const [meeting, setMeeting] = useState(null);
@@ -40,13 +53,14 @@ export default function LiveMeetingRoom() {
   
   // UI state
   const [sidebarTab, setSidebarTab] = useState('chat');
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pinnedUserId, setPinnedUserId] = useState(null);
   const [reactions, setReactions] = useState([]);
   const [meetingDuration, setMeetingDuration] = useState(0);
   const [layoutMode, setLayoutMode] = useState('grid');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   // Chat and features
   const [chatMessages, setChatMessages] = useState([]);
@@ -64,10 +78,53 @@ export default function LiveMeetingRoom() {
   const captionTimeoutRef = useRef(null);
   const currentUserRef = useRef(null); // Keep a ref so callbacks have access
   const isMutedRef = useRef(true); // Keep track for recognition
+  const meetingContainerRef = useRef(null);
 
   // Keep currentUserRef in sync
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+
+  // Update sidebar visibility when switching between mobile/desktop
+  useEffect(() => {
+    if (isMobile) {
+      setShowSidebar(false);
+    }
+  }, [isMobile]);
+
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      const elem = meetingContainerRef.current || document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+      } else if (elem.msRequestFullscreen) {
+        elem.msRequestFullscreen();
+      }
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+      setIsFullscreen(false);
+    }
+  }, []);
+
+  // Listen to fullscreen change events
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, []);
 
   // Meeting duration timer
   useEffect(() => {
@@ -446,8 +503,8 @@ export default function LiveMeetingRoom() {
   );
 
   if (error) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
-      <div className="card" style={{ padding: 40, textAlign: 'center', maxWidth: 400 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', padding: 16 }}>
+      <div className="card" style={{ padding: isMobile ? 24 : 40, textAlign: 'center', maxWidth: 400, width: '100%' }}>
         <div style={{ width: 64, height: 64, background: 'rgba(239,68,68,0.12)', color: 'var(--danger)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: 24 }}>⚠</div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Unable to Join</h2>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 32 }}>{error}</p>
@@ -456,22 +513,59 @@ export default function LiveMeetingRoom() {
     </div>
   );
 
+  const sidebarTabsData = [
+    { key: 'chat', label: 'Chat', Icon: ChatTabIcon },
+    { key: 'participants', label: 'People', Icon: PeopleTabIcon },
+    { key: 'transcript', label: 'Transcript', Icon: TranscriptTabIcon },
+    { key: 'polls', label: 'Polls', Icon: PollsTabIcon }
+  ];
+
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#000', overflow: 'hidden' }}>
+    <div ref={meetingContainerRef} style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#000', overflow: 'hidden' }} className={isFullscreen ? 'meeting-fullscreen' : ''}>
       
       {/* Header Bar */}
-      <div style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <h1 style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{meeting?.title}</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-overlay)', padding: '2px 8px', borderRadius: 100, border: '1px solid var(--border-default)' }}>
+      <div style={{
+        padding: isMobile ? '8px 12px' : '12px 24px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-base)',
+        gap: 8, flexShrink: 0
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, minWidth: 0, flex: 1 }}>
+          <h1 style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: isMobile ? 13 : 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMobile ? 180 : 300 }}>{meeting?.title}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-overlay)', padding: '2px 8px', borderRadius: 100, border: '1px solid var(--border-default)', flexShrink: 0 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} />
             <span style={{ color: 'var(--text-secondary)', fontSize: 12, fontWeight: 700 }}>{participants.length + 1}</span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {/* Fullscreen button */}
+          <button
+            onClick={toggleFullscreen}
+            style={{
+              padding: isMobile ? '5px 8px' : '6px 10px', borderRadius: 8,
+              display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600,
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+              color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.15s'
+            }}
+            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+          >
+            {isFullscreen ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+              </svg>
+            )}
+            {!isMobile && <span>{isFullscreen ? 'Exit' : 'Fullscreen'}</span>}
+          </button>
+
           {isHost && (
-            <button onClick={handleEndMeeting} className="btn-secondary" style={{ padding: '6px 12px', fontSize: 12, color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.3)' }}>End Meeting</button>
+            <button onClick={handleEndMeeting} className="btn-secondary" style={{ padding: isMobile ? '5px 10px' : '6px 12px', fontSize: 12, color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.3)' }}>
+              {isMobile ? 'End' : 'End Meeting'}
+            </button>
           )}
         </div>
       </div>
@@ -482,61 +576,95 @@ export default function LiveMeetingRoom() {
         {/* Video Area */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: 'var(--bg-base)' }}>
           <VideoGrid
-            localStream={localStream} remoteStreams={remoteStreams} participants={participants} currentUser={currentUser} isScreenSharing={isScreenSharing} pinnedUserId={pinnedUserId} onPinUser={setPinnedUserId} reactions={reactions} layoutMode={layoutMode}
+            localStream={localStream} remoteStreams={remoteStreams} participants={participants} currentUser={currentUser} isScreenSharing={isScreenSharing} pinnedUserId={pinnedUserId} onPinUser={setPinnedUserId} reactions={reactions} layoutMode={layoutMode} isMobile={isMobile}
           />
           
           {/* Live Captions Overlay */}
           <AnimatePresence>
             {showCaptions && liveCaption && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', maxWidth: '80%', zIndex: 50, pointerEvents: 'none' }}>
-                <div style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', padding: '14px 24px', borderRadius: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--info)' }}>{liveCaption.speaker}</span>
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: isMobile ? 16 : 32, left: '50%', transform: 'translateX(-50%)', maxWidth: isMobile ? '92%' : '80%', width: isMobile ? '92%' : 'auto', zIndex: 50, pointerEvents: 'none' }}>
+                <div style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', padding: isMobile ? '10px 16px' : '14px 24px', borderRadius: isMobile ? 12 : 16, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: isMobile ? 11 : 12, fontWeight: 700, color: 'var(--info)' }}>{liveCaption.speaker}</span>
                     {!liveCaption.isFinal && <span className="spinner" style={{ width: 10, height: 10, borderWidth: 2 }} />}
                   </div>
-                  <p style={{ fontSize: 16, color: '#fff', lineHeight: 1.5, fontWeight: 500, margin: 0 }}>{liveCaption.text}</p>
+                  <p style={{ fontSize: isMobile ? 13 : 16, color: '#fff', lineHeight: 1.5, fontWeight: 500, margin: 0 }}>{liveCaption.text}</p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar — Desktop: side panel, Mobile: bottom sheet overlay */}
         <AnimatePresence>
           {showSidebar && (
-            <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 360, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid var(--border-default)', background: 'var(--bg-elevated)', zIndex: 10 }}>
-              
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-base)' }}>
-                {[
-                  { key: 'chat', label: 'Chat', Icon: ChatTabIcon },
-                  { key: 'participants', label: 'People', Icon: PeopleTabIcon },
-                  { key: 'transcript', label: 'Transcript', Icon: TranscriptTabIcon },
-                  { key: 'polls', label: 'Polls', Icon: PollsTabIcon }
-                ].map(tab => (
-                  <button
-                    key={tab.key} onClick={() => setSidebarTab(tab.key)}
-                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 0', border: 'none', background: 'transparent', cursor: 'pointer', position: 'relative', color: sidebarTab === tab.key ? 'var(--info)' : 'var(--text-secondary)' }}
-                  >
-                    <tab.Icon active={sidebarTab === tab.key} />
-                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{tab.label}</span>
-                    {sidebarTab === tab.key && <motion.div layoutId="sidebarTab" style={{ position: 'absolute', bottom: -1, left: 16, right: 16, height: 2, background: 'var(--info)', borderRadius: '2px 2px 0 0' }} />}
-                  </button>
-                ))}
-              </div>
+            <>
+              {/* Mobile overlay backdrop */}
+              {isMobile && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowSidebar(false)}
+                  style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90 }}
+                />
+              )}
+              <motion.div
+                initial={isMobile ? { y: '100%' } : { width: 0, opacity: 0 }}
+                animate={isMobile ? { y: 0 } : { width: 360, opacity: 1 }}
+                exit={isMobile ? { y: '100%' } : { width: 0, opacity: 0 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className={isMobile ? 'meeting-sidebar-mobile slide-up-enter' : ''}
+                style={{
+                  display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                  borderLeft: isMobile ? 'none' : '1px solid var(--border-default)',
+                  background: 'var(--bg-elevated)', zIndex: isMobile ? 100 : 10,
+                  ...(isMobile ? {
+                    position: 'fixed', bottom: 0, left: 0, right: 0,
+                    height: '60vh', width: '100%',
+                    borderRadius: '20px 20px 0 0',
+                    borderTop: '1px solid var(--border-default)',
+                  } : {})
+                }}
+              >
+                {/* Mobile drag handle */}
+                {isMobile && (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 4px', flexShrink: 0 }}>
+                    <div style={{ width: 36, height: 4, borderRadius: 100, background: 'rgba(255,255,255,0.2)' }} />
+                  </div>
+                )}
 
-              <div style={{ flex: 1, overflow: 'hidden' }}>
-                {sidebarTab === 'chat' && <ChatPanel messages={chatMessages} participants={participants} currentUser={currentUser} onSendMessage={(msg, rid, isPriv) => socketClient.sendChatMessage(msg, rid, isPriv)} />}
-                {sidebarTab === 'participants' && <ParticipantsPanel participants={participants} currentUser={currentUser} isHost={isHost} />}
-                {sidebarTab === 'transcript' && <TranscriptPanel segments={transcriptSegments} meetingId={meetingId} />}
-                {sidebarTab === 'polls' && <PollPanel polls={polls} currentUser={currentUser} isHost={isHost} onCreatePoll={(q, o, am, anon) => socketClient.createPoll(q, o, am, anon)} onVotePoll={(pid, oids) => socketClient.votePoll(pid, oids)} onClosePoll={pid => socketClient.closePoll(pid)} />}
-              </div>
-            </motion.div>
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-base)', flexShrink: 0 }}>
+                  {sidebarTabsData.map(tab => (
+                    <button
+                      key={tab.key} onClick={() => setSidebarTab(tab.key)}
+                      style={{
+                        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isMobile ? 3 : 6,
+                        padding: isMobile ? '8px 0' : '12px 0', border: 'none', background: 'transparent', cursor: 'pointer',
+                        position: 'relative', color: sidebarTab === tab.key ? 'var(--info)' : 'var(--text-secondary)'
+                      }}
+                    >
+                      <tab.Icon active={sidebarTab === tab.key} />
+                      <span style={{ fontSize: isMobile ? 9 : 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{tab.label}</span>
+                      {sidebarTab === tab.key && <motion.div layoutId="sidebarTab" style={{ position: 'absolute', bottom: -1, left: 16, right: 16, height: 2, background: 'var(--info)', borderRadius: '2px 2px 0 0' }} />}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  {sidebarTab === 'chat' && <ChatPanel messages={chatMessages} participants={participants} currentUser={currentUser} onSendMessage={(msg, rid, isPriv) => socketClient.sendChatMessage(msg, rid, isPriv)} />}
+                  {sidebarTab === 'participants' && <ParticipantsPanel participants={participants} currentUser={currentUser} isHost={isHost} />}
+                  {sidebarTab === 'transcript' && <TranscriptPanel segments={transcriptSegments} meetingId={meetingId} />}
+                  {sidebarTab === 'polls' && <PollPanel polls={polls} currentUser={currentUser} isHost={isHost} onCreatePoll={(q, o, am, anon) => socketClient.createPoll(q, o, am, anon)} onVotePoll={(pid, oids) => socketClient.votePoll(pid, oids)} onClosePoll={pid => socketClient.closePoll(pid)} />}
+                </div>
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
       </div>
 
       {/* Control Bar */}
-      <ControlBar isMuted={isMuted} isVideoOn={isVideoOn} isScreenSharing={isScreenSharing} isHandRaised={isHandRaised} onToggleMute={handleToggleMute} onToggleVideo={handleToggleVideo} onToggleScreenShare={handleToggleScreenShare} onToggleHandRaise={handleToggleHandRaise} onLeaveMeeting={handleLeaveMeeting} showSidebar={showSidebar} onToggleSidebar={() => setShowSidebar(!showSidebar)} onReaction={handleReaction} onToggleCaptions={() => setShowCaptions(!showCaptions)} showCaptions={showCaptions} meetingDuration={meetingDuration} layoutMode={layoutMode} onChangeLayout={setLayoutMode} />
+      <ControlBar isMuted={isMuted} isVideoOn={isVideoOn} isScreenSharing={isScreenSharing} isHandRaised={isHandRaised} onToggleMute={handleToggleMute} onToggleVideo={handleToggleVideo} onToggleScreenShare={handleToggleScreenShare} onToggleHandRaise={handleToggleHandRaise} onLeaveMeeting={handleLeaveMeeting} showSidebar={showSidebar} onToggleSidebar={() => setShowSidebar(!showSidebar)} onReaction={handleReaction} onToggleCaptions={() => setShowCaptions(!showCaptions)} showCaptions={showCaptions} meetingDuration={meetingDuration} layoutMode={layoutMode} onChangeLayout={setLayoutMode} isMobile={isMobile} isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} />
 
       <video ref={localVideoRef} autoPlay muted playsInline style={{ display: 'none' }} />
     </div>

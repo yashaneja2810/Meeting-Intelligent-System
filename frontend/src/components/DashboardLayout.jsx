@@ -87,15 +87,34 @@ const EMPLOYEE_NAV = [
   }
 ]
 
+// Hook to detect mobile
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= breakpoint)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [breakpoint])
+  return isMobile
+}
+
 export default function DashboardLayout({ children }) {
   const location = useLocation()
   const navigate = useNavigate()
   const { profile, logout } = useAuthStore()
   const [workspace, setWorkspace] = useState('admin')
   const [loggingOut, setLoggingOut] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     setWorkspace(location.pathname.startsWith('/employee') ? 'employee' : 'admin')
+  }, [location.pathname])
+
+  // Close mobile menu on navigation
+  useEffect(() => {
+    setMobileMenuOpen(false)
   }, [location.pathname])
 
   const nav = workspace === 'admin' ? ADMIN_NAV : EMPLOYEE_NAV
@@ -108,136 +127,220 @@ export default function DashboardLayout({ children }) {
 
   const isActive = (path) => location.pathname === path
 
+  const sidebarContent = (
+    <>
+      {/* Logo */}
+      <div
+        className="flex items-center gap-2.5 px-5 py-5 cursor-pointer flex-shrink-0"
+        onClick={() => { navigate('/'); setMobileMenuOpen(false); }}
+      >
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: '#ffffff', color: '#0c0c0e' }}
+        >
+          <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5} style={{ width: 18, height: 18 }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+        </div>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>AutoExec</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2 }}>AI Platform</div>
+        </div>
+        {/* Close button on mobile */}
+        {isMobile && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setMobileMenuOpen(false); }}
+            style={{ marginLeft: 'auto', padding: 6, borderRadius: 8, background: 'var(--bg-elevated)', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        )}
+      </div>
+
+      <div className="divider mx-5" />
+
+      {/* Workspace switcher */}
+      <div className="px-4 py-3 flex-shrink-0">
+        <div className="toggle-pill">
+          <button
+            onClick={() => { setWorkspace('admin'); navigate('/admin/dashboard'); setMobileMenuOpen(false); }}
+            className={`toggle-pill-btn flex-1 ${workspace === 'admin' ? 'active' : ''}`}
+          >Admin</button>
+          <button
+            onClick={() => { setWorkspace('employee'); navigate('/employee/tasks'); setMobileMenuOpen(false); }}
+            className={`toggle-pill-btn flex-1 ${workspace === 'employee' ? 'active' : ''}`}
+          >Employee</button>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 pb-3 custom-scrollbar" style={{ paddingTop: 4 }}>
+        {nav.map((group) => (
+          <div key={group.section} className="mb-4">
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '6px 10px 4px' }}>
+              {group.section}
+            </div>
+            {group.items.map((item) => {
+              const active = isActive(item.path)
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`sidebar-item ${active ? 'active' : ''} mb-0.5`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span style={{ color: active ? 'var(--text-primary)' : 'var(--text-tertiary)', display: 'flex', flexShrink: 0 }}>
+                    {item.icon}
+                  </span>
+                  <span className="flex-1 truncate">{item.name}</span>
+                  {item.badge && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4,
+                      background: 'rgba(34,197,94,0.15)', color: '#4ade80',
+                      border: '1px solid rgba(34,197,94,0.2)', letterSpacing: '0.05em'
+                    }}>
+                      {item.badge}
+                    </span>
+                  )}
+                  {active && (
+                    <motion.div
+                      layoutId={`indicator-${workspace}`}
+                      className="absolute left-0 w-0.5 rounded-r-full"
+                      style={{ top: 8, bottom: 8, background: 'rgba(255,255,255,0.5)' }}
+                    />
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
+      </nav>
+
+      {/* User footer */}
+      <div className="flex-shrink-0 px-3 py-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+        <div
+          className="flex items-center gap-2.5 p-2.5 rounded-xl transition-colors cursor-pointer group"
+          style={{ background: 'var(--bg-elevated)' }}
+        >
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+            style={{ background: '#ffffff', color: '#0c0c0e' }}
+          >
+            {profile?.display_name?.[0]?.toUpperCase() || 'U'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }} className="truncate">
+              {profile?.display_name || 'User'}
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }} className="truncate">
+              {profile?.email}
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="flex-shrink-0 p-1.5 rounded-lg transition-colors"
+            style={{ color: 'var(--text-tertiary)' }}
+            title="Sign out"
+          >
+            {loggingOut ? (
+              <div className="spinner" style={{ width: 14, height: 14 }} />
+            ) : (
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+    </>
+  )
+
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
       <InviteNotification />
 
-      {/* ── SIDEBAR ── */}
-      <aside
-        className="w-60 fixed inset-y-0 left-0 flex flex-col z-50 stitch-texture"
-        style={{
-          background: 'var(--bg-surface)',
-          borderRight: '1px solid var(--border-subtle)',
-        }}
-      >
-        {/* Logo */}
+      {/* ── MOBILE TOP BAR ── */}
+      {isMobile && (
         <div
-          className="flex items-center gap-2.5 px-5 py-5 cursor-pointer flex-shrink-0"
-          onClick={() => navigate('/')}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 90,
+            padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)',
+          }}
         >
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              style={{ padding: 6, borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', cursor: 'pointer', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 24, height: 24, background: '#fff', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg style={{ width: 12, height: 12 }} fill="none" stroke="#0c0c0e" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.02em' }}>AutoExec</span>
+            </div>
+          </div>
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
             style={{ background: '#ffffff', color: '#0c0c0e' }}
           >
-            <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5} style={{ width: 18, height: 18 }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-          </div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>AutoExec</div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2 }}>AI Platform</div>
+            {profile?.display_name?.[0]?.toUpperCase() || 'U'}
           </div>
         </div>
+      )}
 
-        <div className="divider mx-5" />
-
-        {/* Workspace switcher */}
-        <div className="px-4 py-3 flex-shrink-0">
-          <div className="toggle-pill">
-            <button
-              onClick={() => { setWorkspace('admin'); navigate('/admin/dashboard') }}
-              className={`toggle-pill-btn flex-1 ${workspace === 'admin' ? 'active' : ''}`}
-            >Admin</button>
-            <button
-              onClick={() => { setWorkspace('employee'); navigate('/employee/tasks') }}
-              className={`toggle-pill-btn flex-1 ${workspace === 'employee' ? 'active' : ''}`}
-            >Employee</button>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 pb-3 custom-scrollbar" style={{ paddingTop: 4 }}>
-          {nav.map((group) => (
-            <div key={group.section} className="mb-4">
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '6px 10px 4px' }}>
-                {group.section}
-              </div>
-              {group.items.map((item) => {
-                const active = isActive(item.path)
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`sidebar-item ${active ? 'active' : ''} mb-0.5`}
-                  >
-                    <span style={{ color: active ? 'var(--text-primary)' : 'var(--text-tertiary)', display: 'flex', flexShrink: 0 }}>
-                      {item.icon}
-                    </span>
-                    <span className="flex-1 truncate">{item.name}</span>
-                    {item.badge && (
-                      <span style={{
-                        fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4,
-                        background: 'rgba(34,197,94,0.15)', color: '#4ade80',
-                        border: '1px solid rgba(34,197,94,0.2)', letterSpacing: '0.05em'
-                      }}>
-                        {item.badge}
-                      </span>
-                    )}
-                    {active && (
-                      <motion.div
-                        layoutId={`indicator-${workspace}`}
-                        className="absolute left-0 w-0.5 rounded-r-full"
-                        style={{ top: 8, bottom: 8, background: 'rgba(255,255,255,0.5)' }}
-                      />
-                    )}
-                  </Link>
-                )
-              })}
-            </div>
-          ))}
-        </nav>
-
-        {/* User footer */}
-        <div className="flex-shrink-0 px-3 py-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-          <div
-            className="flex items-center gap-2.5 p-2.5 rounded-xl transition-colors cursor-pointer group"
-            style={{ background: 'var(--bg-elevated)' }}
-          >
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-              style={{ background: '#ffffff', color: '#0c0c0e' }}
+      {/* ── MOBILE SIDEBAR OVERLAY ── */}
+      <AnimatePresence>
+        {isMobile && mobileMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="mobile-sidebar-overlay"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="flex flex-col stitch-texture"
+              style={{
+                position: 'fixed', inset: '0', width: 280, zIndex: 100,
+                background: 'var(--bg-surface)',
+                borderRight: '1px solid var(--border-subtle)',
+              }}
             >
-              {profile?.display_name?.[0]?.toUpperCase() || 'U'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }} className="truncate">
-                {profile?.display_name || 'User'}
-              </p>
-              <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }} className="truncate">
-                {profile?.email}
-              </p>
-            </div>
-            <button
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="flex-shrink-0 p-1.5 rounded-lg transition-colors"
-              style={{ color: 'var(--text-tertiary)' }}
-              title="Sign out"
-            >
-              {loggingOut ? (
-                <div className="spinner" style={{ width: 14, height: 14 }} />
-              ) : (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
-      </aside>
+              {sidebarContent}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── DESKTOP SIDEBAR ── */}
+      {!isMobile && (
+        <aside
+          className="w-60 fixed inset-y-0 left-0 flex flex-col z-50 stitch-texture"
+          style={{
+            background: 'var(--bg-surface)',
+            borderRight: '1px solid var(--border-subtle)',
+          }}
+        >
+          {sidebarContent}
+        </aside>
+      )}
 
       {/* ── MAIN CONTENT ── */}
-      <main className="ml-60 flex-1 min-h-screen overflow-x-hidden" style={{ background: 'var(--bg-base)' }}>
+      <main
+        className={`flex-1 min-h-screen overflow-x-hidden dashboard-content ${!isMobile ? 'ml-60' : ''}`}
+        style={{ background: 'var(--bg-base)', paddingTop: isMobile ? 52 : 0 }}
+      >
         {children}
       </main>
     </div>

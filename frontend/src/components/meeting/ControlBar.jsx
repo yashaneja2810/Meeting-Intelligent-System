@@ -105,18 +105,24 @@ export default function ControlBar({
   showCaptions,
   meetingDuration,
   layoutMode = 'grid',
-  onChangeLayout
+  onChangeLayout,
+  isMobile = false,
+  isFullscreen = false,
+  onToggleFullscreen
 }) {
   const [showReactions, setShowReactions] = useState(false);
   const [showLayoutPicker, setShowLayoutPicker] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   
   const reactionsRef = useRef(null);
   const layoutRef = useRef(null);
+  const moreMenuRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (reactionsRef.current && !reactionsRef.current.contains(e.target)) setShowReactions(false);
       if (layoutRef.current && !layoutRef.current.contains(e.target)) setShowLayoutPicker(false);
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) setShowMoreMenu(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -136,8 +142,129 @@ export default function ControlBar({
     return { background: '#fff', color: '#000', border: '1px solid #fff' };
   };
 
+  const btnSize = isMobile ? 44 : 56;
+  const leaveWidth = isMobile ? 56 : 72;
+
+  // On mobile, we show a condensed control bar with core buttons + "More" overflow
+  if (isMobile) {
+    return (
+      <div style={{ background: 'var(--bg-base)', borderTop: '1px solid var(--border-default)', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 50, flexShrink: 0 }}>
+        {/* Timer */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', background: 'var(--bg-elevated)', padding: '4px 10px', borderRadius: 100, border: '1px solid var(--border-default)' }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--danger)', boxShadow: '0 0 6px var(--danger)' }} className="pulse-ring" />
+          {formatTime(meetingDuration)}
+        </div>
+
+        {/* Core controls */}
+        <button
+          onClick={onToggleMute}
+          style={{ ...getControlButtonStyles(!isMuted), width: btnSize, height: btnSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
+          title={isMuted ? "Unmute" : "Mute"}
+        >
+          {isMuted ? <MicOffIcon /> : <MicIcon />}
+        </button>
+
+        <button
+          onClick={onToggleVideo}
+          style={{ ...getControlButtonStyles(isVideoOn), width: btnSize, height: btnSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
+          title={isVideoOn ? "Stop Video" : "Start Video"}
+        >
+          {isVideoOn ? <VideoIcon /> : <VideoOffIcon />}
+        </button>
+
+        {/* Chat/Sidebar toggle */}
+        <button
+          onClick={onToggleSidebar}
+          style={{ ...getControlButtonStyles(showSidebar), width: btnSize, height: btnSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
+          title="Toggle Chat"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+        </button>
+
+        {/* More menu */}
+        <div style={{ position: 'relative' }} ref={moreMenuRef}>
+          <button
+            onClick={() => setShowMoreMenu(!showMoreMenu)}
+            style={{ ...getControlButtonStyles(showMoreMenu), width: btnSize, height: btnSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
+            title="More options"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+          </button>
+
+          <AnimatePresence>
+            {showMoreMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                style={{
+                  position: 'absolute', bottom: '100%', right: 0, marginBottom: 12,
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+                  borderRadius: 16, padding: 8, width: 200, boxShadow: 'var(--shadow-lg)'
+                }}
+              >
+                {[
+                  { label: isScreenSharing ? 'Stop Sharing' : 'Share Screen', icon: isScreenSharing ? <ScreenShareStopIcon /> : <ScreenShareIcon />, action: () => { onToggleScreenShare(); setShowMoreMenu(false); }, active: isScreenSharing },
+                  { label: isHandRaised ? 'Lower Hand' : 'Raise Hand', icon: <HandIcon />, action: () => { onToggleHandRaise(); setShowMoreMenu(false); }, active: isHandRaised },
+                  { label: showCaptions ? 'Hide Captions' : 'Show Captions', icon: <CaptionsIcon />, action: () => { onToggleCaptions(); setShowMoreMenu(false); }, active: showCaptions },
+                  { label: 'Reactions', icon: <SmileIcon />, action: () => { setShowMoreMenu(false); setShowReactions(true); }, active: false },
+                ].map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={item.action}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                      borderRadius: 10, background: item.active ? 'var(--bg-overlay)' : 'transparent',
+                      border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
+                      color: item.active ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: 13, fontWeight: 600
+                    }}
+                  >
+                    <span style={{ display: 'flex', flexShrink: 0 }}>{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Leave */}
+        <button
+          onClick={onLeaveMeeting}
+          style={{ ...getControlButtonStyles(false, true), width: leaveWidth, height: btnSize, borderRadius: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
+          title="Leave Meeting"
+        >
+          <PhoneOffIcon />
+        </button>
+
+        {/* Reactions popup (mobile) */}
+        <AnimatePresence>
+          {showReactions && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              ref={reactionsRef}
+              style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 100, padding: '8px 12px', display: 'flex', gap: 2, boxShadow: 'var(--shadow-lg)', zIndex: 100 }}
+            >
+              {REACTION_EMOJIS.map(emoji => (
+                <button
+                  key={emoji} onClick={() => { onReaction(emoji); setShowReactions(false); }}
+                  style={{ fontSize: 22, padding: '6px 8px', borderRadius: 100, background: 'transparent', border: 'none', cursor: 'pointer' }}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // ===== DESKTOP CONTROL BAR =====
   return (
-    <div style={{ background: 'var(--bg-base)', borderTop: '1px solid var(--border-default)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 50 }}>
+    <div style={{ background: 'var(--bg-base)', borderTop: '1px solid var(--border-default)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 50, flexShrink: 0 }}>
       
       {/* Left: Time */}
       <div style={{ width: 150, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -151,7 +278,7 @@ export default function ControlBar({
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <button
           onClick={onToggleMute}
-          style={{ ...getControlButtonStyles(!isMuted), width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
+          style={{ ...getControlButtonStyles(!isMuted), width: btnSize, height: btnSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
           title={isMuted ? "Unmute" : "Mute"}
         >
           {isMuted ? <MicOffIcon /> : <MicIcon />}
@@ -159,7 +286,7 @@ export default function ControlBar({
 
         <button
           onClick={onToggleVideo}
-          style={{ ...getControlButtonStyles(isVideoOn), width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
+          style={{ ...getControlButtonStyles(isVideoOn), width: btnSize, height: btnSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
           title={isVideoOn ? "Stop Video" : "Start Video"}
         >
           {isVideoOn ? <VideoIcon /> : <VideoOffIcon />}
@@ -167,7 +294,7 @@ export default function ControlBar({
 
         <button
           onClick={onToggleScreenShare}
-          style={{ ...getControlButtonStyles(isScreenSharing), width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
+          style={{ ...getControlButtonStyles(isScreenSharing), width: btnSize, height: btnSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
           title={isScreenSharing ? "Stop sharing" : "Share screen"}
         >
           {isScreenSharing ? <ScreenShareStopIcon /> : <ScreenShareIcon />}
@@ -175,7 +302,7 @@ export default function ControlBar({
 
         <button
           onClick={onToggleHandRaise}
-          style={{ ...getControlButtonStyles(isHandRaised), width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
+          style={{ ...getControlButtonStyles(isHandRaised), width: btnSize, height: btnSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
           title={isHandRaised ? "Lower hand" : "Raise hand"}
         >
           <HandIcon />
@@ -185,7 +312,7 @@ export default function ControlBar({
         <div style={{ position: 'relative' }} ref={reactionsRef}>
           <button
             onClick={() => setShowReactions(!showReactions)}
-            style={{ ...getControlButtonStyles(showReactions), width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
+            style={{ ...getControlButtonStyles(showReactions), width: btnSize, height: btnSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
             title="Reactions"
           >
             <SmileIcon />
@@ -213,7 +340,7 @@ export default function ControlBar({
         <div style={{ position: 'relative' }} ref={layoutRef}>
           <button
             onClick={() => setShowLayoutPicker(!showLayoutPicker)}
-            style={{ ...getControlButtonStyles(showLayoutPicker), width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
+            style={{ ...getControlButtonStyles(showLayoutPicker), width: btnSize, height: btnSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
             title="Change Layout"
           >
             <LayoutIcon />
@@ -243,7 +370,7 @@ export default function ControlBar({
 
         <button
           onClick={onLeaveMeeting}
-          style={{ ...getControlButtonStyles(false, true), width: 72, height: 56, borderRadius: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer', marginLeft: 16 }}
+          style={{ ...getControlButtonStyles(false, true), width: leaveWidth, height: btnSize, borderRadius: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', cursor: 'pointer', marginLeft: 16 }}
           title="Leave Meeting"
         >
           <PhoneOffIcon />

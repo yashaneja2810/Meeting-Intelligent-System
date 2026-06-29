@@ -87,7 +87,8 @@ export default function VideoGrid({
   pinnedUserId,
   onPinUser,
   reactions,
-  layoutMode = 'grid'
+  layoutMode = 'grid',
+  isMobile = false
 }) {
   const totalParticipants = (remoteStreams?.size || 0) + 1;
   const allStreams = [];
@@ -128,16 +129,16 @@ export default function VideoGrid({
   // ======== SPOTLIGHT / PIN LAYOUT ========
   if (effectiveLayout === 'spotlight' && spotlightStream) {
     return (
-      <div style={{ width: '100%', height: '100%', display: 'flex', gap: 12, padding: 12 }}>
-        <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 8 : 12, padding: isMobile ? 8 : 12 }}>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}>
           <VideoTile
             key={spotlightStream.id} stream={spotlightStream.stream} name={spotlightStream.name} isMuted={spotlightStream.isMuted} isLocal={spotlightStream.isLocal} participantData={spotlightStream.participantData} isPinned={true} isSpotlight={true} isScreenShare={spotlightId === 'local' ? isScreenSharing : spotlightStream.participantData?.is_screen_sharing} onPin={() => onPinUser?.(spotlightStream.id === pinnedUserId ? null : spotlightStream.id)} reactions={reactions?.filter(r => r.userId === spotlightStream.id)}
           />
         </div>
         {filmstripStreams.length > 0 && (
-          <div style={{ width: 220, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }} className="custom-scrollbar">
+          <div style={isMobile ? { display: 'flex', gap: 8, height: 80, flexShrink: 0, overflowX: 'auto' } : { width: 220, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }} className="custom-scrollbar">
             {filmstripStreams.map(s => (
-              <div key={s.id} style={{ flexShrink: 0 }}>
+              <div key={s.id} style={isMobile ? { height: '100%', aspectRatio: '16/9', flexShrink: 0 } : { flexShrink: 0 }}>
                 <VideoTile
                   stream={s.stream} name={s.name} isMuted={s.isMuted} isLocal={s.isLocal} participantData={s.participantData} isPinned={false} isCompact={true} onPin={() => onPinUser?.(s.id)} reactions={reactions?.filter(r => r.userId === s.id)}
                 />
@@ -154,12 +155,12 @@ export default function VideoGrid({
     const speakerStream = allStreams[0];
     const otherStreams = allStreams.slice(1);
     return (
-      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: 12, padding: 12 }}>
-        <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: isMobile ? 8 : 12, padding: isMobile ? 8 : 12 }}>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}>
           <VideoTile key={speakerStream.id} stream={speakerStream.stream} name={speakerStream.name} isMuted={speakerStream.isMuted} isLocal={speakerStream.isLocal} participantData={speakerStream.participantData} isPinned={false} isSpotlight={true} onPin={() => onPinUser?.(speakerStream.id)} reactions={reactions?.filter(r => r.userId === speakerStream.id)} />
         </div>
         {otherStreams.length > 0 && (
-          <div style={{ display: 'flex', gap: 12, height: 160, flexShrink: 0, justifyContent: 'center', overflowX: 'auto' }} className="custom-scrollbar">
+          <div style={{ display: 'flex', gap: isMobile ? 8 : 12, height: isMobile ? 80 : 160, flexShrink: 0, justifyContent: 'center', overflowX: 'auto' }} className="custom-scrollbar">
             {otherStreams.map(s => (
               <div key={s.id} style={{ height: '100%', aspectRatio: '16/9', flexShrink: 0 }}>
                 <VideoTile stream={s.stream} name={s.name} isMuted={s.isMuted} isLocal={s.isLocal} participantData={s.participantData} isPinned={false} isCompact={true} onPin={() => onPinUser?.(s.id)} reactions={reactions?.filter(r => r.userId === s.id)} />
@@ -176,14 +177,14 @@ export default function VideoGrid({
     const mainStream = allStreams[0];
     const sideStreams = allStreams.slice(1);
     return (
-      <div style={{ width: '100%', height: '100%', display: 'flex', gap: 12, padding: 12 }}>
-        <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 8 : 12, padding: isMobile ? 8 : 12 }}>
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}>
           <VideoTile key={mainStream.id} stream={mainStream.stream} name={mainStream.name} isMuted={mainStream.isMuted} isLocal={mainStream.isLocal} participantData={mainStream.participantData} isPinned={false} isSpotlight={true} onPin={() => onPinUser?.(mainStream.id)} reactions={reactions?.filter(r => r.userId === mainStream.id)} />
         </div>
         {sideStreams.length > 0 && (
-          <div style={{ width: 220, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }} className="custom-scrollbar">
+          <div style={isMobile ? { display: 'flex', gap: 8, height: 80, flexShrink: 0, overflowX: 'auto' } : { width: 220, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }} className="custom-scrollbar">
             {sideStreams.map(s => (
-              <div key={s.id} style={{ flexShrink: 0 }}>
+              <div key={s.id} style={isMobile ? { height: '100%', aspectRatio: '16/9', flexShrink: 0 } : { flexShrink: 0 }}>
                 <VideoTile stream={s.stream} name={s.name} isMuted={s.isMuted} isLocal={s.isLocal} participantData={s.participantData} isPinned={false} isCompact={true} onPin={() => onPinUser?.(s.id)} reactions={reactions?.filter(r => r.userId === s.id)} />
               </div>
             ))}
@@ -194,8 +195,14 @@ export default function VideoGrid({
   }
 
   // ======== GRID VIEW ========
+  // Determine grid columns for mobile
+  const getGridCols = (count) => {
+    if (isMobile) return count <= 2 ? 1 : 2;
+    return count <= 9 ? 3 : 4;
+  };
+
   return (
-    <div style={{ width: '100%', height: '100%', padding: 12 }}>
+    <div style={{ width: '100%', height: '100%', padding: isMobile ? 8 : 12 }}>
       {totalParticipants === 1 && (
         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: '100%', maxWidth: 1000, aspectRatio: '16/9' }}>
@@ -205,11 +212,11 @@ export default function VideoGrid({
       )}
 
       {totalParticipants === 2 && (
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 8 : 12 }}>
           {allStreams.map(s => (
-            <div key={s.id} style={{ flex: 1, maxWidth: '50%', height: '100%', maxHeight: '80vh', display: 'flex', alignItems: 'center' }}>
-              <div style={{ width: '100%', aspectRatio: '16/9' }}>
-                <VideoTile stream={s.stream} name={s.name} isMuted={s.isMuted} isLocal={s.isLocal} participantData={s.participantData} isPinned={s.id === pinnedUserId} onPin={() => onPinUser?.(s.id === pinnedUserId ? null : s.id)} reactions={reactions?.filter(r => r.userId === s.id)} />
+            <div key={s.id} style={{ flex: 1, maxWidth: isMobile ? '100%' : '50%', height: isMobile ? '50%' : '100%', maxHeight: isMobile ? '50%' : '80vh', display: 'flex', alignItems: 'center', width: '100%' }}>
+              <div style={{ width: '100%', height: isMobile ? '100%' : 'auto', aspectRatio: isMobile ? undefined : '16/9' }}>
+                <VideoTile stream={s.stream} name={s.name} isMuted={s.isMuted} isLocal={s.isLocal} participantData={s.participantData} isPinned={s.id === pinnedUserId} isSpotlight={isMobile} onPin={() => onPinUser?.(s.id === pinnedUserId ? null : s.id)} reactions={reactions?.filter(r => r.userId === s.id)} />
               </div>
             </div>
           ))}
@@ -234,7 +241,7 @@ export default function VideoGrid({
       )}
 
       {totalParticipants === 4 && (
-        <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: 12 }}>
+        <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: isMobile ? 8 : 12 }}>
           {allStreams.map(s => (
             <div key={s.id} style={{ width: '100%', height: '100%', minHeight: 0, minWidth: 0 }}>
               <VideoTile stream={s.stream} name={s.name} isMuted={s.isMuted} isLocal={s.isLocal} participantData={s.participantData} isPinned={s.id === pinnedUserId} isSpotlight={true} onPin={() => onPinUser?.(s.id === pinnedUserId ? null : s.id)} reactions={reactions?.filter(r => r.userId === s.id)} />
@@ -244,7 +251,7 @@ export default function VideoGrid({
       )}
 
       {totalParticipants >= 5 && (
-        <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateColumns: `repeat(${totalParticipants <= 9 ? 3 : 4}, 1fr)`, gridAutoRows: '1fr', gap: 12 }}>
+        <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateColumns: `repeat(${getGridCols(totalParticipants)}, 1fr)`, gridAutoRows: '1fr', gap: isMobile ? 8 : 12 }}>
           {allStreams.map(s => (
             <div key={s.id} style={{ width: '100%', height: '100%', minHeight: 0, minWidth: 0 }}>
               <VideoTile stream={s.stream} name={s.name} isMuted={s.isMuted} isLocal={s.isLocal} participantData={s.participantData} isPinned={s.id === pinnedUserId} isSpotlight={true} onPin={() => onPinUser?.(s.id === pinnedUserId ? null : s.id)} reactions={reactions?.filter(r => r.userId === s.id)} />
