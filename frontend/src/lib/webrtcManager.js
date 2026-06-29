@@ -11,18 +11,40 @@ class WebRTCManager {
     this.listeners = new Map();
     this.pendingPeerCreations = new Map(); // userId -> promise
     
-    // WebRTC configuration
+    // WebRTC configuration with STUN and TURN servers
+    // STUN: Discovers public IP (works for simple NAT scenarios)
+    // TURN: Relays media when direct connection fails (required for production)
     this.config = {
       iceServers: [
+        // Google Public STUN servers
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        // Add TURN servers for production
-        // {
-        //   urls: import.meta.env.VITE_TURN_SERVER_URL,
-        //   username: import.meta.env.VITE_TURN_USERNAME,
-        //   credential: import.meta.env.VITE_TURN_CREDENTIAL
-        // }
-      ]
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' },
+        
+        // Free TURN servers (Metered.ca - 50GB/month free)
+        // These relay media when direct P2P connection fails
+        {
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        
+        // Backup TURN servers (Twilio's public STUN/TURN)
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ],
+      iceCandidatePoolSize: 10 // Gather more ICE candidates for better connectivity
     };
     
     this.setupSocketListeners();
