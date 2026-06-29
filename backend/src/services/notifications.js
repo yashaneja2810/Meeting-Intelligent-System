@@ -1,16 +1,22 @@
-import nodemailer from 'nodemailer';
+// import nodemailer from 'nodemailer';
+import * as brevo from '@getbrevo/brevo';
 import axios from 'axios';
 import { supabaseAdmin } from '../config/supabase.js';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
+// SMTP Configuration (COMMENTED OUT - Using Brevo instead)
+// const transporter = nodemailer.createTransport({
+//   host: process.env.SMTP_HOST,
+//   port: process.env.SMTP_PORT,
+//   secure: false,
+//   auth: {
+//     user: process.env.SMTP_USER,
+//     pass: process.env.SMTP_PASS
+//   }
+// });
+
+// Brevo Configuration
+const apiInstance = new brevo.TransactionalEmailsApi();
+apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
 
 export async function sendNotification(taskId, teamMemberId, type) {
   try {
@@ -56,9 +62,10 @@ export async function sendNotification(taskId, teamMemberId, type) {
       } else {
         console.error('Admin fetch error:', { profileError, userError });
         // Use fallback values
+        const fallbackEmail = process.env.EMAIL_FROM.match(/<(.+)>/)?.[1] || 'noreply@autoexec.ai';
         admin = {
           display_name: 'Admin',
-          email: process.env.SMTP_USER
+          email: fallbackEmail
         };
       }
     }
@@ -117,21 +124,43 @@ async function sendEmail(member, task, type, admin) {
   const subject = getEmailSubject(type, task);
   const html = getEmailTemplate(member, task, type, admin);
 
-  // Dynamic display name with admin info + Reply-To header
+  // Dynamic display name with admin info
   const adminName = admin?.display_name || 'Admin';
-  const adminEmail = admin?.email || process.env.SMTP_USER;
+  const adminEmail = admin?.email || process.env.EMAIL_FROM.match(/<(.+)>/)?.[1] || 'noreply@autoexec.ai';
   
   console.log('Sending email with admin info:', { adminName, adminEmail }); // Debug log
   
-  const mailOptions = {
-    from: `${adminName} via AutoExec AI <${process.env.SMTP_USER}>`,
-    replyTo: `${adminName} <${adminEmail}>`,
-    to: member.email,
-    subject,
-    html
-  };
+  // Brevo Email Send
+  try {
+    const sendSmtpEmail = new brevo.SendSmtpEmail();
+    
+    // Parse EMAIL_FROM to extract name and email
+    const fromMatch = process.env.EMAIL_FROM.match(/^(.+?)\s*<(.+)>$/);
+    const fromName = fromMatch ? fromMatch[1].trim() : 'AutoExec AI';
+    const fromEmail = fromMatch ? fromMatch[2].trim() : process.env.EMAIL_FROM;
+    
+    sendSmtpEmail.sender = { name: `${adminName} via ${fromName}`, email: fromEmail };
+    sendSmtpEmail.to = [{ email: member.email, name: member.name }];
+    sendSmtpEmail.replyTo = { email: adminEmail, name: adminName };
+    sendSmtpEmail.subject = subject;
+    sendSmtpEmail.htmlContent = html;
+    
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log('✅ Email sent via Brevo successfully');
+  } catch (error) {
+    console.error('❌ Brevo email send error:', error);
+    throw error;
+  }
 
-  await transporter.sendMail(mailOptions);
+  // SMTP Method (COMMENTED OUT - Using Brevo instead)
+  // const mailOptions = {
+  //   from: `${adminName} via AutoExec AI <${process.env.SMTP_USER}>`,
+  //   replyTo: `${adminName} <${adminEmail}>`,
+  //   to: member.email,
+  //   subject,
+  //   html
+  // };
+  // await transporter.sendMail(mailOptions);
 }
 
 async function sendSlackNotification(webhook, task, type) {

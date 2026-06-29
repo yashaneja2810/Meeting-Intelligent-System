@@ -1,14 +1,20 @@
-import nodemailer from 'nodemailer';
+// import nodemailer from 'nodemailer';
+import * as brevo from '@getbrevo/brevo';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
+// SMTP Configuration (COMMENTED OUT - Using Brevo instead)
+// const transporter = nodemailer.createTransport({
+//   host: process.env.SMTP_HOST,
+//   port: process.env.SMTP_PORT,
+//   secure: false,
+//   auth: {
+//     user: process.env.SMTP_USER,
+//     pass: process.env.SMTP_PASS
+//   }
+// });
+
+// Brevo Configuration
+const apiInstance = new brevo.TransactionalEmailsApi();
+apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
 
 export async function sendTeamInviteEmail(email, inviteData) {
   const { companyName, role, inviteId } = inviteData;
@@ -224,10 +230,32 @@ export async function sendTeamInviteEmail(email, inviteData) {
     </html>
   `;
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: `You're invited to join ${companyName} on AutoExec AI`,
-    html
-  });
+  // Brevo Email Send
+  try {
+    const sendSmtpEmail = new brevo.SendSmtpEmail();
+    
+    // Parse EMAIL_FROM to extract name and email
+    const fromMatch = process.env.EMAIL_FROM.match(/^(.+?)\s*<(.+)>$/);
+    const fromName = fromMatch ? fromMatch[1].trim() : 'AutoExec AI';
+    const fromEmail = fromMatch ? fromMatch[2].trim() : process.env.EMAIL_FROM;
+    
+    sendSmtpEmail.sender = { name: fromName, email: fromEmail };
+    sendSmtpEmail.to = [{ email: email }];
+    sendSmtpEmail.subject = `You're invited to join ${companyName} on AutoExec AI`;
+    sendSmtpEmail.htmlContent = html;
+    
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log('✅ Team invite email sent via Brevo successfully');
+  } catch (error) {
+    console.error('❌ Brevo email send error:', error);
+    throw error;
+  }
+
+  // SMTP Method (COMMENTED OUT - Using Brevo instead)
+  // await transporter.sendMail({
+  //   from: process.env.EMAIL_FROM,
+  //   to: email,
+  //   subject: `You're invited to join ${companyName} on AutoExec AI`,
+  //   html
+  // });
 }

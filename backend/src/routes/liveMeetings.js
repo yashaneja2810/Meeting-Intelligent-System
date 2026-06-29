@@ -1,7 +1,8 @@
 import express from 'express';
 import { supabaseAdmin } from '../config/supabase.js';
 import { authenticate } from '../middleware/auth.js';
-import nodemailer from 'nodemailer';
+// import nodemailer from 'nodemailer';
+import * as brevo from '@getbrevo/brevo';
 import axios from 'axios';
 
 const router = express.Router();
@@ -466,9 +467,9 @@ router.delete('/:id', authenticate, async (req, res) => {
 
 // Helper function to send meeting invitation email
 async function sendMeetingInvitation(email, name, meeting, creatorId) {
-  // Skip email sending if SMTP not configured
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.log('⚠️ SMTP not configured, skipping email invitation');
+  // Skip email sending if Brevo not configured
+  if (!process.env.BREVO_API_KEY) {
+    console.log('⚠️ Brevo API key not configured, skipping email invitation');
     return;
   }
 
@@ -484,50 +485,74 @@ async function sendMeetingInvitation(email, name, meeting, creatorId) {
       ? `Scheduled for: ${new Date(meeting.scheduled_at).toLocaleString()}`
       : 'Join now - Meeting is ready!';
 
-    // Create transporter (same pattern as notifications.js)
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
-    });
-
-    // Send email
-    await transporter.sendMail({
-      from: `${creator?.display_name || 'Admin'} via AutoExec AI <${process.env.SMTP_USER}>`,
-      replyTo: `${creator?.display_name || 'Admin'} <${creator?.email || process.env.SMTP_USER}>`,
-      to: email,
-      subject: `Meeting Invitation: ${meeting.title}`,
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #000; border-bottom: 2px solid #000; padding-bottom: 10px;">Meeting Invitation</h2>
-          
-          <p>Hi ${name},</p>
-          
-          <p>${creator?.display_name || 'Your team admin'} has invited you to join a live meeting.</p>
-          
-          <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin: 0 0 10px 0; color: #000;">${meeting.title}</h3>
-            ${meeting.description ? `<p style="margin: 10px 0; color: #666;">${meeting.description}</p>` : ''}
-            <p style="margin: 10px 0;"><strong>${scheduledText}</strong></p>
-          </div>
-          
-          <a href="${meetingUrl}" 
-             style="display: inline-block; background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
-            Join Meeting
-          </a>
-          
-          <p style="color: #666; font-size: 14px; margin-top: 30px;">
-            Meeting Link: <a href="${meetingUrl}">${meetingUrl}</a>
-          </p>
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #000; border-bottom: 2px solid #000; padding-bottom: 10px;">Meeting Invitation</h2>
+        
+        <p>Hi ${name},</p>
+        
+        <p>${creator?.display_name || 'Your team admin'} has invited you to join a live meeting.</p>
+        
+        <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin: 0 0 10px 0; color: #000;">${meeting.title}</h3>
+          ${meeting.description ? `<p style="margin: 10px 0; color: #666;">${meeting.description}</p>` : ''}
+          <p style="margin: 10px 0;"><strong>${scheduledText}</strong></p>
         </div>
-      `
-    });
+        
+        <a href="${meetingUrl}" 
+           style="display: inline-block; background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
+          Join Meeting
+        </a>
+        
+        <p style="color: #666; font-size: 14px; margin-top: 30px;">
+          Meeting Link: <a href="${meetingUrl}">${meetingUrl}</a>
+        </p>
+      </div>
+    `;
 
-    console.log(`✅ Meeting invitation sent to ${email}`);
+    // Brevo Email Send
+    const apiInstance = new brevo.TransactionalEmailsApi();
+    apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+    
+    const sendSmtpEmail = new brevo.SendSmtpEmail();
+    
+    // Parse EMAIL_FROM to extract name and email
+    const fromMatch = process.env.EMAIL_FROM.match(/^(.+?)\s*<(.+)>$/);
+    const fromName = fromMatch ? fromMatch[1].trim() : 'AutoExec AI';
+    const fromEmail = fromMatch ? fromMatch[2].trim() : process.env.EMAIL_FROM;
+    
+    sendSmtpEmail.sender = { name: `${creator?.display_name || 'Admin'} via ${fromName}`, email: fromEmail };
+    sendSmtpEmail.to = [{ email: email, name: name }];
+    sendSmtpEmail.replyTo = { email: creator?.email || fromEmail, name: creator?.display_name || 'Admin' };
+    sendSmtpEmail.subject = `Meeting Invitation: ${meeting.title}`;
+    sendSmtpEmail.htmlContent = html;
+    
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log(`✅ Meeting invitation sent to ${email} via Brevo`);
+
+    // SMTP Method (COMMENTED OUT - Using Brevo instead)
+    // Skip email sending if SMTP not configured
+    // if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    //   console.log('⚠️ SMTP not configured, skipping email invitation');
+    //   return;
+    // }
+    // const transporter = nodemailer.createTransport({
+    //   host: process.env.SMTP_HOST,
+    //   port: process.env.SMTP_PORT,
+    //   secure: false,
+    //   auth: {
+    //     user: process.env.SMTP_USER,
+    //     pass: process.env.SMTP_PASS
+    //   }
+    // });
+    // await transporter.sendMail({
+    //   from: `${creator?.display_name || 'Admin'} via AutoExec AI <${process.env.SMTP_USER}>`,
+    //   replyTo: `${creator?.display_name || 'Admin'} <${creator?.email || process.env.SMTP_USER}>`,
+    //   to: email,
+    //   subject: `Meeting Invitation: ${meeting.title}`,
+    //   html
+    // });
+
   } catch (error) {
     console.error('Error sending meeting invitation:', error.message);
     // Don't throw - allow meeting creation to succeed even if email fails

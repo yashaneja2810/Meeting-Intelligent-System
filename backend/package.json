@@ -9,6 +9,7 @@
     "start": "node src/server.js"
   },
   "dependencies": {
+    "@getbrevo/brevo": "^2.5.0",
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.2",
     "cors": "^2.8.5",

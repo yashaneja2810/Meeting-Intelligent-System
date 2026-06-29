@@ -1,15 +1,21 @@
-import nodemailer from 'nodemailer';
+// import nodemailer from 'nodemailer';
+import * as brevo from '@getbrevo/brevo';
 import { supabaseAdmin } from '../config/supabase.js';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
+// SMTP Configuration (COMMENTED OUT - Using Brevo instead)
+// const transporter = nodemailer.createTransport({
+//   host: process.env.SMTP_HOST,
+//   port: process.env.SMTP_PORT,
+//   secure: false,
+//   auth: {
+//     user: process.env.SMTP_USER,
+//     pass: process.env.SMTP_PASS
+//   }
+// });
+
+// Brevo Configuration
+const apiInstance = new brevo.TransactionalEmailsApi();
+apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
 
 // Send notification when employee requests completion
 export async function sendCompletionRequestNotification(taskId, teamMemberId, completionRequestId) {
@@ -205,12 +211,34 @@ export async function sendCompletionRequestNotification(taskId, teamMemberId, co
       </html>
     `;
 
-    await transporter.sendMail({
-      from: `AutoExec AI <${process.env.SMTP_USER}>`,
-      to: admin.email,
-      subject: `Task Completion Request: ${task.title}`,
-      html
-    });
+    // Brevo Email Send
+    try {
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
+      
+      // Parse EMAIL_FROM to extract name and email
+      const fromMatch = process.env.EMAIL_FROM.match(/^(.+?)\s*<(.+)>$/);
+      const fromName = fromMatch ? fromMatch[1].trim() : 'AutoExec AI';
+      const fromEmail = fromMatch ? fromMatch[2].trim() : process.env.EMAIL_FROM;
+      
+      sendSmtpEmail.sender = { name: fromName, email: fromEmail };
+      sendSmtpEmail.to = [{ email: admin.email, name: admin.display_name }];
+      sendSmtpEmail.subject = `Task Completion Request: ${task.title}`;
+      sendSmtpEmail.htmlContent = html;
+      
+      await apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log('✅ Completion request email sent via Brevo successfully');
+    } catch (error) {
+      console.error('❌ Brevo email send error:', error);
+      throw error;
+    }
+
+    // SMTP Method (COMMENTED OUT - Using Brevo instead)
+    // await transporter.sendMail({
+    //   from: `AutoExec AI <${process.env.SMTP_USER}>`,
+    //   to: admin.email,
+    //   subject: `Task Completion Request: ${task.title}`,
+    //   html
+    // });
 
     // Create notification record
     await supabaseAdmin
@@ -463,13 +491,36 @@ export async function sendCompletionReviewNotification(taskId, teamMemberId, sta
       </html>
     `;
 
-    await transporter.sendMail({
-      from: `${admin.display_name} via AutoExec AI <${process.env.SMTP_USER}>`,
-      replyTo: `${admin.display_name} <${admin.email}>`,
-      to: teamMember.email,
-      subject: `Task ${isApproved ? 'Approved' : 'Needs Revision'}: ${task.title}`,
-      html
-    });
+    // Brevo Email Send
+    try {
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
+      
+      // Parse EMAIL_FROM to extract name and email
+      const fromMatch = process.env.EMAIL_FROM.match(/^(.+?)\s*<(.+)>$/);
+      const fromName = fromMatch ? fromMatch[1].trim() : 'AutoExec AI';
+      const fromEmail = fromMatch ? fromMatch[2].trim() : process.env.EMAIL_FROM;
+      
+      sendSmtpEmail.sender = { name: `${admin.display_name} via ${fromName}`, email: fromEmail };
+      sendSmtpEmail.to = [{ email: teamMember.email, name: teamMember.name }];
+      sendSmtpEmail.replyTo = { email: admin.email, name: admin.display_name };
+      sendSmtpEmail.subject = `Task ${isApproved ? 'Approved' : 'Needs Revision'}: ${task.title}`;
+      sendSmtpEmail.htmlContent = html;
+      
+      await apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log('✅ Completion review email sent via Brevo successfully');
+    } catch (error) {
+      console.error('❌ Brevo email send error:', error);
+      throw error;
+    }
+
+    // SMTP Method (COMMENTED OUT - Using Brevo instead)
+    // await transporter.sendMail({
+    //   from: `${admin.display_name} via AutoExec AI <${process.env.SMTP_USER}>`,
+    //   replyTo: `${admin.display_name} <${admin.email}>`,
+    //   to: teamMember.email,
+    //   subject: `Task ${isApproved ? 'Approved' : 'Needs Revision'}: ${task.title}`,
+    //   html
+    // });
 
     // Create notification record
     await supabaseAdmin
